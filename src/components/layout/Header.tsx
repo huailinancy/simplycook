@@ -20,7 +20,7 @@ export function Header() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-transform group-hover:scale-105">
             <ChefHat className="h-5 w-5" />
           </div>
-          <span className="font-display text-lg font-semibold text-foreground">
+          <span className="font-display text-base font-semibold text-foreground">
             SimplyCook
           </span>
         </Link>
