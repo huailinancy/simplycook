@@ -1,1 +1,8 @@
 project_id = "genabrbjuvdatddvdiit"
+
+[api]
+enabled = true
+port = 54321
+
+[functions.search-recipes]
+verify_jwt = false
