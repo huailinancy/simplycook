@@ -1,8 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ChefHat, Search, Calendar, ShoppingCart, UtensilsCrossed, LogOut } from 'lucide-react';
+import { ChefHat, Search, Calendar, ShoppingCart, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { path: '/', label: 'Home', icon: ChefHat },
@@ -13,7 +12,6 @@ const navItems = [
 
 export function Header() {
   const location = useLocation();
-  const { signOut, user } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -58,16 +56,6 @@ export function Header() {
             <Search className="h-4 w-4" />
             Search Recipes
           </Button>
-          {user && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => signOut()}
-              title="Sign out"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </div>
     </header>
