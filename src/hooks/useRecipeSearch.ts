@@ -1,92 +1,114 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Recipe, SearchFilters } from '@/types/recipe';
+import { Recipe, SearchFilters, SupabaseRecipe, toAppRecipe } from '@/types/recipe';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-interface SearchResult {
-  recipes: Recipe[];
-  totalResults: number;
-  offset: number;
-  number: number;
+export type SortOption = 'newest' | 'popular' | 'name';
+
+interface UseRecipeSearchOptions {
+  sortBy?: SortOption;
 }
 
-export function useRecipeSearch() {
+export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [supabaseRecipes, setSupabaseRecipes] = useState<SupabaseRecipe[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const [currentOffset, setCurrentOffset] = useState(0);
+  const [sortBy, setSortBy] = useState<SortOption>(options.sortBy || 'newest');
   const { toast } = useToast();
+  const { language } = useLanguage();
 
-  const searchRecipes = useCallback(async (filters: SearchFilters, offset = 0) => {
+  const searchRecipes = useCallback(async (filters: SearchFilters, offset = 0, sort: SortOption = sortBy) => {
     setIsLoading(true);
-    
+
     try {
-      // Build query params
-      const params = new URLSearchParams();
-      
+      // Build Supabase query
+      let query = supabase
+        .from('recipes')
+        .select('*', { count: 'exact' });
+
+      // Only show public recipes: system recipes (user_id is null) OR published user recipes
+      query = query.or('user_id.is.null,is_published.eq.true');
+
+      // Search by name or description
       if (filters.query) {
-        params.set('query', filters.query);
+        query = query.or(`name.ilike.%${filters.query}%,description.ilike.%${filters.query}%,english_name.ilike.%${filters.query}%`);
       }
+
+      // Filter by cuisine
       if (filters.cuisineType) {
-        params.set('cuisine', filters.cuisineType.toLowerCase());
+        query = query.ilike('cuisine', `%${filters.cuisineType}%`);
       }
+
+      // Filter by meal type
       if (filters.mealType) {
-        // Spoonacular uses 'type' for dish types like main course, dessert, etc.
-        params.set('type', filters.mealType.toLowerCase());
+        query = query.contains('meal_type', [filters.mealType.toLowerCase()]);
       }
-      if (filters.diet) {
-        params.set('diet', filters.diet.toLowerCase());
+
+      // Apply sorting
+      switch (sort) {
+        case 'popular':
+          query = query.order('save_count', { ascending: false, nullsFirst: false });
+          break;
+        case 'name':
+          query = query.order('name', { ascending: true });
+          break;
+        case 'newest':
+        default:
+          query = query.order('created_at', { ascending: false });
+          break;
       }
+
+      // Pagination
+      const pageSize = 12;
+      query = query.range(offset, offset + pageSize - 1);
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      let fetchedRecipes = data as SupabaseRecipe[];
+
+      // Apply client-side time filtering for accuracy
       if (filters.time) {
-        // Parse time range like "0-15", "15-30", etc.
-        const maxTime = filters.time.includes('+') 
-          ? undefined 
-          : parseInt(filters.time.split('-')[1]);
-        if (maxTime) {
-          params.set('maxReadyTime', maxTime.toString());
-        }
-      }
-      
-      params.set('number', '12');
-      params.set('offset', offset.toString());
-
-      const { data, error } = await supabase.functions.invoke<SearchResult>('search-recipes', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Pass params via query string in the body since invoke doesn't support query params directly
-      });
-
-      // For GET requests with query params, we need to construct the URL manually
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/search-recipes?${params.toString()}`;
-      
-      const response = await fetch(functionUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to search recipes');
+        fetchedRecipes = fetchedRecipes.filter(recipe => {
+          const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
+          switch (filters.time) {
+            case '0-15':
+              return totalTime <= 15;
+            case '15-30':
+              return totalTime > 15 && totalTime <= 30;
+            case '30-60':
+              return totalTime > 30 && totalTime <= 60;
+            case '60+':
+              return totalTime > 60;
+            default:
+              return true;
+          }
+        });
       }
 
-      const result: SearchResult = await response.json();
-      
+      const appRecipes = fetchedRecipes.map(r => toAppRecipe(r, language));
+
       if (offset === 0) {
-        setRecipes(result.recipes);
+        setRecipes(appRecipes);
+        setSupabaseRecipes(fetchedRecipes);
       } else {
-        setRecipes(prev => [...prev, ...result.recipes]);
+        setRecipes(prev => [...prev, ...appRecipes]);
+        setSupabaseRecipes(prev => [...prev, ...fetchedRecipes]);
       }
-      
-      setTotalResults(result.totalResults);
+
+      // Use filtered count if time filter is applied, otherwise use server count
+      setTotalResults(filters.time ? fetchedRecipes.length : (count || 0));
       setCurrentOffset(offset);
-      
+      setSortBy(sort);
+
       toast({
-        title: `Found ${result.totalResults} recipes`,
+        title: `Found ${count || 0} recipes`,
         description: filters.query ? `Searching for "${filters.query}"` : 'Showing all recipes',
       });
 
@@ -98,23 +120,38 @@ export function useRecipeSearch() {
         variant: 'destructive',
       });
       setRecipes([]);
+      setSupabaseRecipes([]);
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, sortBy, language]);
 
   const loadMore = useCallback((filters: SearchFilters) => {
-    searchRecipes(filters, currentOffset + 12);
-  }, [searchRecipes, currentOffset]);
+    searchRecipes(filters, currentOffset + 12, sortBy);
+  }, [searchRecipes, currentOffset, sortBy]);
+
+  const changeSortBy = useCallback((filters: SearchFilters, newSort: SortOption) => {
+    searchRecipes(filters, 0, newSort);
+  }, [searchRecipes]);
 
   const hasMore = currentOffset + 12 < totalResults;
 
+  // Get save count for a recipe
+  const getSaveCount = useCallback((recipeUri: string) => {
+    const recipe = supabaseRecipes.find(r => r.id.toString() === recipeUri);
+    return recipe?.save_count || 0;
+  }, [supabaseRecipes]);
+
   return {
     recipes,
+    supabaseRecipes,
     isLoading,
     totalResults,
     hasMore,
+    sortBy,
     searchRecipes,
     loadMore,
+    changeSortBy,
+    getSaveCount,
   };
 }

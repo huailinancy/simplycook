@@ -1,0 +1,140 @@
+{
+  "results": [
+    {
+      "chinese": "凉拌茄子",
+      "english": "cold_eggplant_salad",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\cold_eggplant_salad.png"
+    },
+    {
+      "chinese": "卤牛肉",
+      "english": "braised_beef",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\braised_beef.png"
+    },
+    {
+      "chinese": "小炒牛肉",
+      "english": "stir_fried_beef",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\stir_fried_beef.png"
+    },
+    {
+      "chinese": "干煸二节子",
+      "english": "dry_fried_lamb_intestine",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\dry_fried_lamb_intestine.png"
+    },
+    {
+      "chinese": "扁豆面旗子",
+      "english": "flat_bean_noodle_soup",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\flat_bean_noodle_soup.png"
+    },
+    {
+      "chinese": "杏鲍菇牛肉粒",
+      "english": "beef_and_oyster_mushroom_cubes",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\beef_and_oyster_mushroom_cubes.png"
+    },
+    {
+      "chinese": "椒麻鸡",
+      "english": "sichuan_pepper_chicken",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\sichuan_pepper_chicken.png"
+    },
+    {
+      "chinese": "水煮花生",
+      "english": "boiled_peanuts",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\boiled_peanuts.png"
+    },
+    {
+      "chinese": "清蒸鱼",
+      "english": "steamed_fish",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\steamed_fish.png"
+    },
+    {
+      "chinese": "炒合菜",
+      "english": "stir_fried_mixed_vegetables",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\stir_fried_mixed_vegetables.png"
+    },
+    {
+      "chinese": "炒烤肉",
+      "english": "stir_fried_grilled_meat",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\stir_fried_grilled_meat.png"
+    },
+    {
+      "chinese": "烤羊排",
+      "english": "roast_lamb_chops",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\roast_lamb_chops.png"
+    },
+    {
+      "chinese": "白菜豆腐",
+      "english": "cabbage_tofu_stew",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\cabbage_tofu_stew.png"
+    },
+    {
+      "chinese": "肉末茄子",
+      "english": "minced_pork_eggplant",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\minced_pork_eggplant.png"
+    },
+    {
+      "chinese": "葱烧豆腐",
+      "english": "scallion_braised_tofu",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\scallion_braised_tofu.png"
+    },
+    {
+      "chinese": "蒜蓉娃娃菜",
+      "english": "garlic_baby_cabbage",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\garlic_baby_cabbage.png"
+    },
+    {
+      "chinese": "蒜蓉豆角",
+      "english": "garlic_string_beans",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\garlic_string_beans.png"
+    },
+    {
+      "chinese": "西湖牛肉羹",
+      "english": "west_lake_beef_soup",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\west_lake_beef_soup.png"
+    },
+    {
+      "chinese": "西葫芦饼",
+      "english": "zucchini_pancake",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\zucchini_pancake.png"
+    },
+    {
+      "chinese": "辣子鸡",
+      "english": "spicy_chicken",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\spicy_chicken.png"
+    },
+    {
+      "chinese": "酸汤肥牛",
+      "english": "sour_soup_fatty_beef",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\sour_soup_fatty_beef.png"
+    },
+    {
+      "chinese": "酸辣汤",
+      "english": "hot_and_sour_soup",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\hot_and_sour_soup.png"
+    },
+    {
+      "chinese": "韭菜盒子",
+      "english": "chive_pancake",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\chive_pancake.png"
+    },
+    {
+      "chinese": "鱼香肉丝",
+      "english": "yu_xiang_pork",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\yu_xiang_pork.png"
+    },
+    {
+      "chinese": "麻婆豆腐",
+      "english": "mapo_tofu",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\mapo_tofu.png"
+    },
+    {
+      "chinese": "黄面烤肉",
+      "english": "yellow_noodle_with_roast_meat",
+      "path": "C:\\Users\\nancy\\simplycook\\scripts\\generated_images\\yellow_noodle_with_roast_meat.png"
+    }
+  ],
+  "errors": [
+    {
+      "recipe": "dingding_fried_noodles",
+      "error": "429 Rate limit exceeded for images per minute in organization org-21C2JNQpgK6EFwMXtM6wK6rA. Limit: 0/1min. Current: 1/1min. Please visit https://platform.openai.com/docs/guides/rate-limits to learn how to increase your rate limit."
+    }
+  ]
+}

@@ -1,0 +1,718 @@
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+
+type Language = 'en' | 'zh';
+
+interface LanguageContextType {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: string) => string;
+}
+
+const translations: Record<Language, Record<string, string>> = {
+  en: {
+    // Navigation
+    'nav.home': 'Home',
+    'nav.recipes': 'Recipes',
+    'nav.mealPlanner': 'Meal Planner',
+    'nav.groceryList': 'Grocery List',
+    'nav.saved': 'Saved',
+    'nav.imported': 'Imported',
+    'nav.signIn': 'Sign In',
+    'nav.signOut': 'Sign Out',
+    'nav.searchRecipes': 'Search Recipes',
+
+    // Home page
+    'home.title': 'Discover Delicious Recipes',
+    'home.subtitle': 'Plan your meals, generate grocery lists, and cook with confidence',
+    'home.exploreRecipes': 'Explore Recipes',
+    'home.startPlanning': 'Start Planning',
+    'home.recipeCompanion': 'Your Recipe Companion',
+    'home.heroTitle1': 'Cook with',
+    'home.heroTitle2': 'Confidence',
+    'home.heroTitle3': 'Every Single Day',
+    'home.heroDesc': 'Discover delicious recipes, plan your meals, and generate grocery lists — all in one place. Your kitchen journey starts here.',
+    'home.planWeek': 'Plan Your Week',
+    'home.curatedRecipes': 'Curated Recipes',
+    'home.curatedRecipesDesc': 'Discover thousands of reliable recipes from around the world',
+    'home.mealPlanning': 'Meal Planning',
+    'home.mealPlanningDesc': 'Plan your weekly meals with our intuitive calendar',
+    'home.smartGrocery': 'Smart Grocery Lists',
+    'home.smartGroceryDesc': 'Auto-generate shopping lists from your meal plans',
+    'home.exploreCuisines': 'Explore Cuisines',
+    'home.exploreCuisinesDesc': 'Discover recipes from around the world',
+    'home.viewAll': 'View All',
+    'home.featuredRecipes': 'Featured Recipes',
+    'home.featuredRecipesDesc': 'Hand-picked favorites to inspire your next meal',
+    'home.seeMore': 'See More',
+    'home.startJourney': 'Start Your Culinary Journey',
+    'home.startJourneyDesc': 'Join thousands of home cooks discovering new recipes, planning meals, and enjoying stress-free grocery shopping.',
+    'home.getStarted': 'Get Started',
+
+    // Recipes page
+    'recipes.title': 'Recipe Search',
+    'recipes.subtitle': 'Find the perfect recipe for any occasion',
+    'recipes.searchPlaceholder': 'Search for recipes, ingredients...',
+    'recipes.cuisine': 'Cuisine',
+    'recipes.mealType': 'Meal Type',
+    'recipes.time': 'Cook Time',
+    'recipes.search': 'Search',
+    'recipes.filters': 'Filters',
+    'recipes.clearFilters': 'Clear filters',
+    'recipes.showing': 'Showing',
+    'recipes.of': 'of',
+    'recipes.sortBy': 'Sort by',
+    'recipes.newest': 'Newest',
+    'recipes.popular': 'Most Popular',
+    'recipes.nameAZ': 'Name (A-Z)',
+    'recipes.loadMore': 'Load More Recipes',
+    'recipes.noResults': 'No recipes found. Try adjusting your search.',
+    'recipes.found': 'Found',
+
+    // Meal Planner
+    'mealPlanner.title': 'Meal Planner',
+    'mealPlanner.subtitle': 'Plan your weekly meals with AI assistance',
+    'mealPlanner.aiGenerate': 'AI Generate',
+    'mealPlanner.regenerate': 'Regenerate',
+    'mealPlanner.save': 'Save',
+    'mealPlanner.finalize': 'Finalize',
+    'mealPlanner.finalized': 'Finalized',
+    'mealPlanner.selectStartDate': 'Select Start Date',
+    'mealPlanner.startTomorrow': 'Start Tomorrow',
+    'mealPlanner.lunch': 'Lunch',
+    'mealPlanner.dinner': 'Dinner',
+    'mealPlanner.addLunch': '+ Add lunch',
+    'mealPlanner.addDinner': '+ Add dinner',
+    'mealPlanner.weeklySummary': 'Weekly Summary',
+    'mealPlanner.mealsPlanned': 'Meals Planned',
+    'mealPlanner.avgCalories': 'Avg Calories/Meal',
+    'mealPlanner.ingredients': 'Ingredients',
+    'mealPlanner.avgPrepTime': 'Avg Prep Time (min)',
+    'mealPlanner.generateTitle': 'Generate Meal Plan with AI',
+    'mealPlanner.generateDesc': 'Choose which recipes to use for generating your weekly meal plan.',
+    'mealPlanner.recipeSource': 'Recipe Source',
+    'mealPlanner.allRecipes': 'All Recipes',
+    'mealPlanner.savedRecipes': 'My Saved Recipes',
+    'mealPlanner.myRecipes': 'My Imported Recipes',
+    'mealPlanner.cancel': 'Cancel',
+    'mealPlanner.generate': 'Generate',
+    'mealPlanner.generating': 'Generating...',
+    'mealPlanner.selectRecipe': 'Select Recipe for',
+    'mealPlanner.noRecipesFound': 'No recipes found in this source.',
+    'mealPlanner.tryDifferentSource': 'Try selecting a different recipe source.',
+    'mealPlanner.finalizedBadge': 'Finalized - Go to Grocery List to generate shopping list',
+    'mealPlanner.numberOfPersons': 'Dishes per Meal',
+    'mealPlanner.personsDesc': 'Number of dishes for each lunch and dinner',
+    'mealPlanner.searchRecipes': 'Search recipes...',
+    'mealPlanner.filterByCuisine': 'All Cuisines',
+    'mealPlanner.filterByTime': 'Any Time',
+    'mealPlanner.under15min': 'Under 15 min',
+    'mealPlanner.under30min': 'Under 30 min',
+    'mealPlanner.under60min': 'Under 60 min',
+    'mealPlanner.over60min': 'Over 60 min',
+
+    // Grocery List
+    'groceryList.title': 'Grocery List',
+    'groceryList.subtitle': 'Your shopping list from meal plans',
+    'groceryList.autoGenerate': 'Auto-Generate from Meal Plan',
+    'groceryList.generateDesc': 'Generate grocery list from your planned meals',
+    'groceryList.finalizeFirst': 'Finalize your weekly meal plan first to generate a grocery list',
+    'groceryList.loading': 'Loading meal plan...',
+    'groceryList.week': 'Week',
+    'groceryList.goToPlanner': 'Go to Planner',
+    'groceryList.generateList': 'Generate List',
+    'groceryList.progress': 'Shopping Progress',
+    'groceryList.items': 'items',
+    'groceryList.clearChecked': 'Clear checked',
+    'groceryList.clearAll': 'Clear all',
+    'groceryList.addItem': 'Add an item...',
+    'groceryList.add': 'Add',
+    'groceryList.emptyTitle': 'Your list is empty',
+    'groceryList.emptyDesc': 'Add items manually or generate a list from your finalized meal plan.',
+    'groceryList.generated': 'Grocery list generated!',
+    'groceryList.generatedDesc': 'items added from your meal plan',
+    'groceryList.noIngredientsFound': 'No ingredients found',
+    'groceryList.noIngredientsDesc': 'Could not generate grocery list. Try adding ingredient data to your recipes.',
+    'groceryList.aiGeneratedDesc': 'items estimated from your recipes',
+
+    // Meal Plan Toast Messages
+    'mealPlan.saved': 'Meal plan saved',
+    'mealPlan.savedDesc': 'Your weekly meal plan has been saved',
+    'mealPlan.savedLocal': 'Meal plan saved locally',
+    'mealPlan.savedLocalDesc': 'Sign in to save your meal plan permanently',
+    'mealPlan.finalized': 'Meal plan finalized!',
+    'mealPlan.finalizedDesc': 'You can now generate your grocery list',
+    'mealPlan.finalizedLocal': 'You can now generate your grocery list. Sign in to save permanently.',
+    'mealPlan.noMeals': 'No meals planned',
+    'mealPlan.noMealsDesc': 'Add some meals to your plan before finalizing',
+    'mealPlan.reset': 'Meal plan reset',
+    'mealPlan.resetDesc': 'You can now regenerate your meal plan',
+    'mealPlan.error': 'Error',
+    'mealPlan.loadError': 'Failed to load meal plan',
+    'mealPlan.saveError': 'Failed to save meal plan',
+    'mealPlan.finalizeError': 'Failed to finalize meal plan',
+    'mealPlan.resetError': 'Failed to reset meal plan',
+    'mealPlan.mealRemoved': 'Meal removed',
+    'mealPlan.mealRemovedDesc': 'The meal has been removed from your plan.',
+
+    // Categories
+    'category.produce': 'Produce',
+    'category.meatSeafood': 'Meat & Seafood',
+    'category.dairy': 'Dairy',
+    'category.pantry': 'Pantry',
+    'category.spices': 'Spices & Seasonings',
+    'category.other': 'Other',
+
+    // Auth
+    'auth.welcomeBack': 'Welcome Back',
+    'auth.createAccount': 'Create Account',
+    'auth.signInAccess': 'Sign in to access SimplyCook',
+    'auth.registerAccess': 'Register for SimplyCook access',
+    'auth.email': 'Email',
+    'auth.password': 'Password',
+    'auth.signIn': 'Sign In',
+    'auth.noAccount': "Don't have an account?",
+    'auth.haveAccount': 'Already have an account?',
+    'auth.signUp': 'Sign up',
+    'auth.whySignIn': 'Why Sign In?',
+    'auth.unlockFeatures': 'Sign in or create an account to unlock these features',
+    'auth.saveRecipes': 'Save Recipes',
+    'auth.saveRecipesDesc': 'Bookmark your favorite recipes and access them anytime from your personal collection',
+    'auth.importRecipes': 'Import Your Recipes',
+    'auth.importRecipesDesc': 'Add your own recipes to your personal collection and keep them private or share with the community',
+    'auth.shareRecipes': 'Share with Community',
+    'auth.shareRecipesDesc': 'Publish your imported recipes for others to discover and save',
+    'auth.personalized': 'Personalized Experience',
+    'auth.personalizedDesc': 'Set your dietary preferences, allergies, and flavor profiles for tailored meal suggestions',
+
+    // Saved Recipes
+    'saved.title': 'Saved Recipes',
+    'saved.subtitle': 'Your collection of favorite recipes',
+    'saved.empty': 'No saved recipes yet',
+    'saved.emptyDesc': 'Start exploring recipes and save your favorites!',
+    'saved.signInTitle': 'Sign in to view saved recipes',
+    'saved.signInDesc': 'Create an account or sign in to save and access your favorite recipes',
+
+    // My Recipes
+    'myRecipes.title': 'Imported Recipes',
+    'myRecipes.subtitle': 'Your personal recipe collection',
+    'myRecipes.addRecipe': 'Add Recipe',
+    'myRecipes.empty': 'No recipes yet',
+    'myRecipes.emptyDesc': 'Start by adding your first recipe!',
+    'myRecipes.addFirst': 'Add Your First Recipe',
+    'myRecipes.signInTitle': 'Sign in to view imported recipes',
+    'myRecipes.signInDesc': 'Create an account or sign in to import and manage your own recipes',
+    'myRecipes.published': 'Published',
+    'myRecipes.private': 'Private',
+    'myRecipes.edit': 'Edit',
+    'myRecipes.publish': 'Publish',
+    'myRecipes.unpublish': 'Unpublish',
+    'myRecipes.delete': 'Delete',
+
+    // Common
+    'common.cal': 'cal',
+    'common.min': 'min',
+    'common.signInRequired': 'Sign in required',
+  },
+  zh: {
+    // Navigation
+    'nav.home': '首页',
+    'nav.recipes': '食谱',
+    'nav.mealPlanner': '膳食计划',
+    'nav.groceryList': '购物清单',
+    'nav.saved': '收藏',
+    'nav.imported': '导入',
+    'nav.signIn': '登录',
+    'nav.signOut': '退出',
+    'nav.searchRecipes': '搜索食谱',
+
+    // Home page
+    'home.title': '发现美味食谱',
+    'home.subtitle': '规划您的膳食，生成购物清单，轻松烹饪',
+    'home.exploreRecipes': '浏览食谱',
+    'home.startPlanning': '开始规划',
+    'home.recipeCompanion': '您的食谱伴侣',
+    'home.heroTitle1': '每天',
+    'home.heroTitle2': '自信',
+    'home.heroTitle3': '下厨',
+    'home.heroDesc': '发现美味食谱，规划膳食，生成购物清单——一站式解决。您的厨房之旅从这里开始。',
+    'home.planWeek': '规划您的一周',
+    'home.curatedRecipes': '精选食谱',
+    'home.curatedRecipesDesc': '发现来自世界各地的数千个可靠食谱',
+    'home.mealPlanning': '膳食计划',
+    'home.mealPlanningDesc': '使用我们直观的日历规划您的每周膳食',
+    'home.smartGrocery': '智能购物清单',
+    'home.smartGroceryDesc': '从您的膳食计划自动生成购物清单',
+    'home.exploreCuisines': '探索菜系',
+    'home.exploreCuisinesDesc': '发现来自世界各地的食谱',
+    'home.viewAll': '查看全部',
+    'home.featuredRecipes': '推荐食谱',
+    'home.featuredRecipesDesc': '精选收藏，激发您的下一餐灵感',
+    'home.seeMore': '查看更多',
+    'home.startJourney': '开始您的美食之旅',
+    'home.startJourneyDesc': '加入数千名家庭厨师的行列，发现新食谱，规划膳食，享受轻松购物。',
+    'home.getStarted': '开始使用',
+
+    // Recipes page
+    'recipes.title': '食谱搜索',
+    'recipes.subtitle': '找到适合任何场合的完美食谱',
+    'recipes.searchPlaceholder': '搜索食谱、食材...',
+    'recipes.cuisine': '菜系',
+    'recipes.mealType': '餐类',
+    'recipes.time': '烹饪时间',
+    'recipes.search': '搜索',
+    'recipes.filters': '筛选',
+    'recipes.clearFilters': '清除筛选',
+    'recipes.showing': '显示',
+    'recipes.of': '共',
+    'recipes.sortBy': '排序',
+    'recipes.newest': '最新',
+    'recipes.popular': '最热门',
+    'recipes.nameAZ': '名称排序',
+    'recipes.loadMore': '加载更多',
+    'recipes.noResults': '未找到食谱，请调整搜索条件。',
+    'recipes.found': '找到',
+
+    // Meal Planner
+    'mealPlanner.title': '膳食计划',
+    'mealPlanner.subtitle': '使用AI辅助规划您的每周膳食',
+    'mealPlanner.aiGenerate': 'AI生成',
+    'mealPlanner.regenerate': '重新生成',
+    'mealPlanner.save': '保存',
+    'mealPlanner.finalize': '确定',
+    'mealPlanner.finalized': '已确定',
+    'mealPlanner.selectStartDate': '选择开始日期',
+    'mealPlanner.startTomorrow': '从明天开始',
+    'mealPlanner.lunch': '午餐',
+    'mealPlanner.dinner': '晚餐',
+    'mealPlanner.addLunch': '+ 添加午餐',
+    'mealPlanner.addDinner': '+ 添加晚餐',
+    'mealPlanner.weeklySummary': '周计划摘要',
+    'mealPlanner.mealsPlanned': '已计划餐数',
+    'mealPlanner.avgCalories': '平均卡路里/餐',
+    'mealPlanner.ingredients': '食材数',
+    'mealPlanner.avgPrepTime': '平均准备时间(分钟)',
+    'mealPlanner.generateTitle': '使用AI生成膳食计划',
+    'mealPlanner.generateDesc': '选择用于生成每周膳食计划的食谱来源。',
+    'mealPlanner.recipeSource': '食谱来源',
+    'mealPlanner.allRecipes': '所有食谱',
+    'mealPlanner.savedRecipes': '我收藏的食谱',
+    'mealPlanner.myRecipes': '我导入的食谱',
+    'mealPlanner.cancel': '取消',
+    'mealPlanner.generate': '生成',
+    'mealPlanner.generating': '生成中...',
+    'mealPlanner.selectRecipe': '选择食谱',
+    'mealPlanner.noRecipesFound': '未找到食谱。',
+    'mealPlanner.tryDifferentSource': '请尝试选择其他食谱来源。',
+    'mealPlanner.finalizedBadge': '已确定 - 前往购物清单生成购物列表',
+    'mealPlanner.numberOfPersons': '每餐菜品数',
+    'mealPlanner.personsDesc': '每顿午餐和晚餐的菜品数量',
+    'mealPlanner.searchRecipes': '搜索食谱...',
+    'mealPlanner.filterByCuisine': '所有菜系',
+    'mealPlanner.filterByTime': '任意时间',
+    'mealPlanner.under15min': '15分钟以内',
+    'mealPlanner.under30min': '30分钟以内',
+    'mealPlanner.under60min': '60分钟以内',
+    'mealPlanner.over60min': '超过60分钟',
+
+    // Grocery List
+    'groceryList.title': '购物清单',
+    'groceryList.subtitle': '您的膳食计划购物清单',
+    'groceryList.autoGenerate': '从膳食计划自动生成',
+    'groceryList.generateDesc': '从您已计划的餐食生成购物清单',
+    'groceryList.finalizeFirst': '请先确定您的每周膳食计划，然后生成购物清单',
+    'groceryList.loading': '加载膳食计划中...',
+    'groceryList.week': '周',
+    'groceryList.goToPlanner': '前往计划',
+    'groceryList.generateList': '生成清单',
+    'groceryList.progress': '购物进度',
+    'groceryList.items': '项',
+    'groceryList.clearChecked': '清除已选',
+    'groceryList.clearAll': '清除全部',
+    'groceryList.addItem': '添加物品...',
+    'groceryList.add': '添加',
+    'groceryList.emptyTitle': '清单为空',
+    'groceryList.emptyDesc': '手动添加物品或从已确定的膳食计划生成清单。',
+    'groceryList.generated': '购物清单已生成！',
+    'groceryList.generatedDesc': '项已从您的膳食计划添加',
+    'groceryList.noIngredientsFound': '未找到食材',
+    'groceryList.noIngredientsDesc': '无法生成购物清单。请尝试为食谱添加食材数据。',
+    'groceryList.aiGeneratedDesc': '项已从您的食谱估算',
+
+    // Meal Plan Toast Messages
+    'mealPlan.saved': '膳食计划已保存',
+    'mealPlan.savedDesc': '您的每周膳食计划已保存',
+    'mealPlan.savedLocal': '膳食计划已本地保存',
+    'mealPlan.savedLocalDesc': '登录以永久保存您的膳食计划',
+    'mealPlan.finalized': '膳食计划已确定！',
+    'mealPlan.finalizedDesc': '您现在可以生成购物清单',
+    'mealPlan.finalizedLocal': '您现在可以生成购物清单。登录以永久保存。',
+    'mealPlan.noMeals': '未规划餐食',
+    'mealPlan.noMealsDesc': '请先添加一些餐食再确定计划',
+    'mealPlan.reset': '膳食计划已重置',
+    'mealPlan.resetDesc': '您现在可以重新生成膳食计划',
+    'mealPlan.error': '错误',
+    'mealPlan.loadError': '加载膳食计划失败',
+    'mealPlan.saveError': '保存膳食计划失败',
+    'mealPlan.finalizeError': '确定膳食计划失败',
+    'mealPlan.resetError': '重置膳食计划失败',
+    'mealPlan.mealRemoved': '餐食已移除',
+    'mealPlan.mealRemovedDesc': '该餐食已从您的计划中移除。',
+
+    // Categories
+    'category.produce': '蔬果',
+    'category.meatSeafood': '肉类海鲜',
+    'category.dairy': '乳制品',
+    'category.pantry': '干货',
+    'category.spices': '调味料',
+    'category.other': '其他',
+
+    // Auth
+    'auth.welcomeBack': '欢迎回来',
+    'auth.createAccount': '创建账户',
+    'auth.signInAccess': '登录以访问SimplyCook',
+    'auth.registerAccess': '注册SimplyCook账户',
+    'auth.email': '邮箱',
+    'auth.password': '密码',
+    'auth.signIn': '登录',
+    'auth.noAccount': '还没有账户？',
+    'auth.haveAccount': '已有账户？',
+    'auth.signUp': '注册',
+    'auth.whySignIn': '为什么要登录？',
+    'auth.unlockFeatures': '登录或创建账户以解锁以下功能',
+    'auth.saveRecipes': '收藏食谱',
+    'auth.saveRecipesDesc': '收藏您喜爱的食谱，随时从个人收藏中访问',
+    'auth.importRecipes': '导入食谱',
+    'auth.importRecipesDesc': '添加您自己的食谱到个人收藏，可以保持私密或与社区分享',
+    'auth.shareRecipes': '分享到社区',
+    'auth.shareRecipesDesc': '发布您导入的食谱，让其他人发现和收藏',
+    'auth.personalized': '个性化体验',
+    'auth.personalizedDesc': '设置您的饮食偏好、过敏原和口味偏好，获得定制的膳食建议',
+
+    // Saved Recipes
+    'saved.title': '收藏的食谱',
+    'saved.subtitle': '您收藏的食谱合集',
+    'saved.empty': '还没有收藏的食谱',
+    'saved.emptyDesc': '开始浏览食谱并收藏您的最爱！',
+    'saved.signInTitle': '登录查看收藏的食谱',
+    'saved.signInDesc': '创建账户或登录以保存和访问您收藏的食谱',
+
+    // My Recipes
+    'myRecipes.title': '导入的食谱',
+    'myRecipes.subtitle': '您的个人食谱收藏',
+    'myRecipes.addRecipe': '添加食谱',
+    'myRecipes.empty': '还没有食谱',
+    'myRecipes.emptyDesc': '开始添加您的第一个食谱吧！',
+    'myRecipes.addFirst': '添加第一个食谱',
+    'myRecipes.signInTitle': '登录查看导入的食谱',
+    'myRecipes.signInDesc': '创建账户或登录以导入和管理您的食谱',
+    'myRecipes.published': '已发布',
+    'myRecipes.private': '私密',
+    'myRecipes.edit': '编辑',
+    'myRecipes.publish': '发布',
+    'myRecipes.unpublish': '取消发布',
+    'myRecipes.delete': '删除',
+
+    // Common
+    'common.cal': '卡',
+    'common.min': '分钟',
+    'common.signInRequired': '需要登录',
+  },
+};
+
+// Chinese to English translation mappings for filter values
+export const cuisineTranslations: Record<string, string> = {
+  // Eight major Chinese cuisines
+  '川菜': 'Sichuan',
+  '粤菜': 'Cantonese',
+  '湘菜': 'Hunan',
+  '鲁菜': 'Shandong',
+  '苏菜': 'Jiangsu',
+  '浙菜': 'Zhejiang',
+  '闽菜': 'Fujian',
+  '徽菜': 'Anhui',
+  // Regional cuisines
+  '东北菜': 'Northeastern',
+  '西北菜': 'Northwestern',
+  '云南菜': 'Yunnan',
+  '贵州菜': 'Guizhou',
+  '新疆菜': 'Xinjiang',
+  '上海菜': 'Shanghai',
+  '北京菜': 'Beijing',
+  '台湾菜': 'Taiwanese',
+  '港式': 'Hong Kong Style',
+  '客家菜': 'Hakka',
+  // Categories
+  '家常菜': 'Home-style',
+  '凉菜': 'Cold Dishes',
+  '热菜': 'Hot Dishes',
+  '快手菜': 'Quick & Easy',
+  '下饭菜': 'Rice Dishes',
+  '硬菜': 'Hearty Dishes',
+  '私房菜': 'Private Kitchen',
+  // Other cuisines
+  '中餐': 'Chinese',
+  '中式': 'Chinese Style',
+  '西餐': 'Western',
+  '西式': 'Western Style',
+  '日料': 'Japanese',
+  '日式': 'Japanese Style',
+  '韩餐': 'Korean',
+  '韩式': 'Korean Style',
+  '泰餐': 'Thai',
+  '泰式': 'Thai Style',
+  '东南亚': 'Southeast Asian',
+  '印度菜': 'Indian',
+  '意大利菜': 'Italian',
+  '意式': 'Italian',
+  '法餐': 'French',
+  '法式': 'French',
+  '美式': 'American',
+  '墨西哥菜': 'Mexican',
+  // Dietary
+  '素食': 'Vegetarian',
+  '素菜': 'Vegetarian',
+  '清真': 'Halal',
+  '健康餐': 'Healthy',
+  '减脂餐': 'Diet-friendly',
+  '轻食': 'Light Meal',
+  // Cooking methods
+  '烧烤': 'BBQ',
+  '火锅': 'Hot Pot',
+  '蒸菜': 'Steamed',
+  '炒菜': 'Stir-fried',
+  '炖菜': 'Braised',
+  '煲汤': 'Soup',
+  '烘焙': 'Baking',
+  '面食': 'Noodles',
+  '饺子': 'Dumplings',
+  '点心': 'Dim Sum',
+};
+
+export const mealTypeTranslations: Record<string, string> = {
+  '早餐': 'Breakfast',
+  '午餐': 'Lunch',
+  '晚餐': 'Dinner',
+  '早午餐': 'Brunch',
+  '小吃': 'Snack',
+  '零食': 'Snack',
+  '甜点': 'Dessert',
+  '甜品': 'Dessert',
+  '夜宵': 'Late Night',
+  '宵夜': 'Late Night',
+  '汤羹': 'Soup',
+  '汤': 'Soup',
+  '主食': 'Staple',
+  '主菜': 'Main Course',
+  '配菜': 'Side Dish',
+  '前菜': 'Appetizer',
+  '开胃菜': 'Appetizer',
+  '饮品': 'Beverage',
+  '饮料': 'Beverage',
+  '下午茶': 'Afternoon Tea',
+  '便当': 'Bento',
+  '盒饭': 'Lunch Box',
+  '快餐': 'Fast Food',
+};
+
+// Time range translations (English to Chinese)
+export const timeRangeTranslations: Record<string, { en: string; zh: string }> = {
+  '0-15': { en: 'Under 15 min', zh: '15分钟以内' },
+  '15-30': { en: '15-30 min', zh: '15-30分钟' },
+  '30-60': { en: '30-60 min', zh: '30-60分钟' },
+  '60+': { en: 'Over 1 hour', zh: '1小时以上' },
+};
+
+export function getTimeRangeLabel(value: string, language: Language): string {
+  return timeRangeTranslations[value]?.[language] || value;
+}
+
+// Tag/label translations for recipe cards
+export const tagTranslations: Record<string, string> = {
+  // Diet labels
+  '素食': 'Vegetarian',
+  '纯素': 'Vegan',
+  '低脂': 'Low-Fat',
+  '高蛋白': 'High-Protein',
+  '低碳水': 'Low-Carb',
+  '无麸质': 'Gluten-Free',
+  '低卡': 'Low-Calorie',
+  '健康': 'Healthy',
+  '清淡': 'Light',
+  '减脂': 'Diet',
+  '增肌': 'Muscle Building',
+  '生酮': 'Keto',
+  // Taste/flavor tags
+  '辣': 'Spicy',
+  '微辣': 'Mild Spicy',
+  '麻辣': 'Numbing Spicy',
+  '酸辣': 'Sour & Spicy',
+  '香辣': 'Fragrant Spicy',
+  '甜': 'Sweet',
+  '酸': 'Sour',
+  '咸': 'Salty',
+  '鲜': 'Umami',
+  '香': 'Fragrant',
+  '酸甜': 'Sweet & Sour',
+  '咸鲜': 'Savory',
+  '清香': 'Light & Fragrant',
+  // Cooking method tags
+  '炒': 'Stir-fried',
+  '煮': 'Boiled',
+  '蒸': 'Steamed',
+  '烤': 'Roasted',
+  '炖': 'Braised',
+  '煎': 'Pan-fried',
+  '炸': 'Deep-fried',
+  '凉拌': 'Cold Dressed',
+  '红烧': 'Red-braised',
+  '清蒸': 'Steamed',
+  '爆炒': 'Quick Stir-fried',
+  '干锅': 'Dry Pot',
+  '水煮': 'Poached',
+  // Time/difficulty tags
+  '快手': 'Quick',
+  '简单': 'Easy',
+  '新手': 'Beginner',
+  '懒人': 'Easy-to-make',
+  '10分钟': '10 Minutes',
+  '15分钟': '15 Minutes',
+  '30分钟': '30 Minutes',
+  // Occasion tags
+  '下饭': 'Rice Dish',
+  '下酒': 'Drinking Snack',
+  '家常': 'Home-style',
+  '宴客': 'Party',
+  '便当': 'Bento',
+  '早餐': 'Breakfast',
+  '午餐': 'Lunch',
+  '晚餐': 'Dinner',
+  // Ingredient tags
+  '鸡肉': 'Chicken',
+  '猪肉': 'Pork',
+  '牛肉': 'Beef',
+  '羊肉': 'Lamb',
+  '鱼': 'Fish',
+  '虾': 'Shrimp',
+  '海鲜': 'Seafood',
+  '豆腐': 'Tofu',
+  '蔬菜': 'Vegetables',
+  '鸡蛋': 'Eggs',
+  '面条': 'Noodles',
+  '米饭': 'Rice',
+  // Additional common tags
+  '排骨': 'Ribs',
+  '五花肉': 'Pork Belly',
+  '里脊': 'Tenderloin',
+  '鸡翅': 'Chicken Wings',
+  '鸡腿': 'Chicken Leg',
+  '肉末': 'Ground Meat',
+  '肉丝': 'Shredded Meat',
+  '肉片': 'Sliced Meat',
+  '土豆': 'Potato',
+  '番茄': 'Tomato',
+  '西红柿': 'Tomato',
+  '茄子': 'Eggplant',
+  '青椒': 'Green Pepper',
+  '豆角': 'Green Beans',
+  '白菜': 'Napa Cabbage',
+  '包菜': 'Cabbage',
+  '卷心菜': 'Cabbage',
+  '黄瓜': 'Cucumber',
+  '冬瓜': 'Winter Melon',
+  '南瓜': 'Pumpkin',
+  '丝瓜': 'Luffa',
+  '苦瓜': 'Bitter Melon',
+  '花菜': 'Cauliflower',
+  '西兰花': 'Broccoli',
+  '菠菜': 'Spinach',
+  '生菜': 'Lettuce',
+  '芹菜': 'Celery',
+  '蘑菇': 'Mushroom',
+  '香菇': 'Shiitake',
+  '木耳': 'Wood Ear',
+  '金针菇': 'Enoki',
+  '杏鲍菇': 'King Oyster Mushroom',
+  // Dish types
+  '盖浇饭': 'Rice Bowl',
+  '炒饭': 'Fried Rice',
+  '拌面': 'Mixed Noodles',
+  '汤面': 'Noodle Soup',
+  '汤': 'Soup',
+  '粥': 'Congee',
+  '饼': 'Pancake',
+  '馒头': 'Steamed Bun',
+  '包子': 'Bao',
+  '小吃': 'Snack',
+  '甜点': 'Dessert',
+  '饮品': 'Beverage',
+  // Flavors
+  '咸香': 'Savory',
+  '酱香': 'Sauce Flavored',
+  '蒜香': 'Garlic',
+  '葱香': 'Scallion',
+  '姜': 'Ginger',
+  '糖醋': 'Sweet & Sour',
+  '鱼香': 'Yu Xiang',
+  '宫保': 'Kung Pao',
+  '麻婆': 'Mapo',
+  '回锅': 'Twice-cooked',
+  '水煮': 'Boiled in Chili Oil',
+  '干煸': 'Dry-fried',
+  '蒜蓉': 'Garlic Sauce',
+  '豉汁': 'Black Bean Sauce',
+  '蚝油': 'Oyster Sauce',
+  '酱爆': 'Sauce Stir-fried',
+  // Add cuisine translations to tags as well
+  ...cuisineTranslations,
+};
+
+// Translate a single tag
+export function translateTag(tag: string, language: Language): string {
+  if (language === 'zh') {
+    return tag;
+  }
+  return tagTranslations[tag] || tag;
+}
+
+// Helper function to translate filter display values
+export function translateFilterValue(value: string, language: Language, type: 'cuisine' | 'mealType'): string {
+  if (language === 'zh') {
+    return value; // Return original Chinese
+  }
+  // Return English translation or original if not found
+  const mapping = type === 'cuisine' ? cuisineTranslations : mealTypeTranslations;
+  return mapping[value] || value;
+}
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(() => {
+    // Check localStorage for saved preference
+    const saved = localStorage.getItem('language');
+    return (saved === 'zh' || saved === 'en') ? saved : 'en';
+  });
+
+  const setLanguage = useCallback((lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem('language', lang);
+  }, []);
+
+  const t = useCallback((key: string): string => {
+    return translations[language][key] || key;
+  }, [language]);
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export function useLanguage() {
+  const context = useContext(LanguageContext);
+  if (context === undefined) {
+    throw new Error('useLanguage must be used within a LanguageProvider');
+  }
+  return context;
+}

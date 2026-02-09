@@ -1,17 +1,19 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-
-const ALLOWED_EMAIL = 'lhuai1212@gmail.com';
+import { UserProfile } from '@/types/recipe';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  userProfile: UserProfile | null;
+  needsOnboarding: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
-  isAllowedEmail: (email: string) => boolean;
+  fetchUserProfile: () => Promise<void>;
+  updateUserProfile: (profile: Partial<UserProfile>) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +22,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+
+  const fetchUserProfile = async () => {
+    if (!user) {
+      setUserProfile(null);
+      setNeedsOnboarding(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No profile found - needs onboarding
+        setUserProfile(null);
+        setNeedsOnboarding(true);
+      } else {
+        console.error('Error fetching user profile:', error);
+      }
+      return;
+    }
+
+    setUserProfile(data as UserProfile);
+    setNeedsOnboarding(false);
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -41,15 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const isAllowedEmail = (email: string): boolean => {
-    return email.toLowerCase() === ALLOWED_EMAIL.toLowerCase();
-  };
+  // Fetch user profile when user changes
+  useEffect(() => {
+    if (user) {
+      fetchUserProfile();
+    } else {
+      setUserProfile(null);
+      setNeedsOnboarding(false);
+    }
+  }, [user]);
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
-    if (!isAllowedEmail(email)) {
-      return { error: 'Access denied. This email is not authorized.' };
-    }
-
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       return { error: error.message };
@@ -58,15 +92,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string): Promise<{ error: string | null }> => {
-    if (!isAllowedEmail(email)) {
-      return { error: 'Access denied. Only authorized emails can register.' };
-    }
-
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`
+        // After email confirmation, redirect to onboarding page
+        emailRedirectTo: `${window.location.origin}/onboarding`
       }
     });
 
@@ -76,15 +107,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return { error: error.message };
     }
+
     return { error: null };
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUserProfile(null);
+    setNeedsOnboarding(false);
+  };
+
+  const updateUserProfile = async (profile: Partial<UserProfile>): Promise<{ error: string | null }> => {
+    if (!user) {
+      return { error: 'Not authenticated' };
+    }
+
+    const { error } = await supabase
+      .from('user_profiles')
+      .upsert({
+        id: user.id,
+        ...profile,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    await fetchUserProfile();
+    return { error: null };
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, isAllowedEmail }}>
+    <AuthContext.Provider value={{
+      user,
+      session,
+      loading,
+      userProfile,
+      needsOnboarding,
+      signIn,
+      signUp,
+      signOut,
+      fetchUserProfile,
+      updateUserProfile
+    }}>
       {children}
     </AuthContext.Provider>
   );

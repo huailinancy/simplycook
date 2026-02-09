@@ -20,6 +20,92 @@ export interface Recipe {
   totalDaily: Record<string, NutrientInfo>;
 }
 
+// Supabase database recipe type
+export interface SupabaseRecipe {
+  id: number;
+  name: string;
+  english_name: string | null;
+  description: string | null;
+  english_description: string | null;
+  meal_type: string[] | null;
+  cuisine: string | null;
+  category: string | null;
+  prep_time: number | null;
+  cook_time: number | null;
+  difficulty: string | null;
+  calories: number | null;
+  macros: {
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  } | null;
+  ingredients: {
+    name: string;
+    amount: string;
+    english_name?: string;
+    english_amount?: string;
+  }[] | null;
+  english_ingredients: {
+    name: string;
+    amount: string;
+  }[] | null;
+  instructions: string[] | null;
+  english_instructions: string[] | null;
+  tags: string[] | null;
+  image_url: string | null;
+  created_at: string | null;
+  // User-imported recipe fields
+  user_id: string | null;
+  is_published: boolean;
+  save_count: number;
+}
+
+// Helper to get localized recipe content
+export function getLocalizedRecipe(recipe: SupabaseRecipe, language: 'en' | 'zh') {
+  if (language === 'en') {
+    return {
+      name: recipe.english_name || recipe.name,
+      description: recipe.english_description || recipe.description,
+      ingredients: recipe.english_ingredients || recipe.ingredients,
+      instructions: recipe.english_instructions || recipe.instructions,
+    };
+  }
+  return {
+    name: recipe.name,
+    description: recipe.description,
+    ingredients: recipe.ingredients,
+    instructions: recipe.instructions,
+  };
+}
+
+// Convert Supabase recipe to app Recipe format
+export function toAppRecipe(sr: SupabaseRecipe, language: 'en' | 'zh' = 'zh'): Recipe {
+  const localized = getLocalizedRecipe(sr, language);
+  const ingredients = localized.ingredients || [];
+
+  return {
+    uri: sr.id.toString(),
+    label: localized.name || sr.name,
+    image: sr.image_url || '/placeholder-recipe.jpg',
+    source: 'SimplyCook',
+    url: '#',
+    yield: 2,
+    dietLabels: sr.tags?.slice(0, 3) || [],
+    healthLabels: [],
+    cautions: [],
+    ingredientLines: ingredients.map(i => `${i.amount} ${i.name}`) || [],
+    ingredients: [],
+    calories: (sr.calories || 0) * 2,
+    totalWeight: 0,
+    totalTime: (sr.prep_time || 0) + (sr.cook_time || 0),
+    cuisineType: sr.cuisine ? [sr.cuisine] : [],
+    mealType: sr.meal_type || [],
+    dishType: sr.category ? [sr.category] : [],
+    totalNutrients: {},
+    totalDaily: {},
+  };
+}
+
 export interface Ingredient {
   text: string;
   quantity: number;
@@ -65,13 +151,12 @@ export interface SearchFilters {
 }
 
 export const CUISINE_TYPES = [
-  'American', 'Asian', 'British', 'Caribbean', 'Central Europe', 
-  'Chinese', 'Eastern Europe', 'French', 'Indian', 'Italian', 
-  'Japanese', 'Kosher', 'Mediterranean', 'Mexican', 'Middle Eastern', 
-  'Nordic', 'South American', 'South East Asian'
+  '川菜', '粤菜', '湘菜', '鲁菜', '苏菜', '浙菜', '闽菜', '徽菜',
+  '东北菜', '西北菜', '云南菜', '贵州菜', '家常菜', '凉菜', '热菜',
+  'Chinese', 'Sichuan', 'Cantonese', 'Home-style'
 ];
 
-export const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Teatime'];
+export const MEAL_TYPES = ['早餐', '午餐', '晚餐', '小吃', '甜点', 'Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
 export const DISH_TYPES = [
   'Biscuits and cookies', 'Bread', 'Cereals', 'Condiments and sauces',
@@ -81,8 +166,8 @@ export const DISH_TYPES = [
 ];
 
 export const DIET_LABELS = [
-  'balanced', 'high-fiber', 'high-protein', 'low-carb', 
-  'low-fat', 'low-sodium'
+  '素食', '低脂', '高蛋白', '低碳水', '清淡',
+  'vegetarian', 'low-fat', 'high-protein', 'low-carb', 'light'
 ];
 
 export const HEALTH_LABELS = [
@@ -95,4 +180,91 @@ export const TIME_RANGES = [
   { label: '15-30 min', value: '15-30' },
   { label: '30-60 min', value: '30-60' },
   { label: 'Over 1 hour', value: '60+' },
+];
+
+// User preferences types
+export interface UserProfile {
+  id: string;
+  allergies: string[];
+  flavor_preferences: string[];
+  diet_preferences: string[];
+  display_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SavedRecipe {
+  id: string;
+  user_id: string;
+  recipe_id: number;
+  created_at: string;
+}
+
+// Preference options
+export const ALLERGY_OPTIONS = [
+  'Dairy',
+  'Eggs',
+  'Fish',
+  'Shellfish',
+  'Tree Nuts',
+  'Peanuts',
+  'Wheat',
+  'Soy',
+  'Sesame',
+];
+
+export const FLAVOR_PREFERENCES = [
+  'Spicy',
+  'Sweet',
+  'Savory',
+  'Sour',
+  'Umami',
+  'Mild',
+  'Bold',
+  'Herby',
+  'Smoky',
+];
+
+export const DIET_PREFERENCE_OPTIONS = [
+  'Vegetarian',
+  'Vegan',
+  'Pescatarian',
+  'Keto',
+  'Paleo',
+  'Low-Carb',
+  'Low-Fat',
+  'Mediterranean',
+  'Whole30',
+];
+
+// Meal Plan types
+export type MealSlotType = 'lunch' | 'dinner';
+
+export interface WeeklyMealPlan {
+  id?: string;
+  weekStart: string; // ISO date string for Monday
+  isFinalized: boolean;
+  meals: MealSlot[];
+}
+
+export interface MealSlot {
+  id?: string;
+  dayOfWeek: number; // 0 = Monday, 6 = Sunday
+  mealType: MealSlotType;
+  recipe: SupabaseRecipe | null;
+}
+
+export type RecipeSource = 'all' | 'saved' | 'my-recipes';
+
+export const DAYS_OF_WEEK = [
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+];
+
+export const GROCERY_CATEGORIES = [
+  'Produce',
+  'Meat & Seafood',
+  'Dairy',
+  'Pantry',
+  'Spices & Seasonings',
+  'Other'
 ];

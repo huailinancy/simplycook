@@ -1,82 +1,210 @@
-import { useState } from 'react';
-import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Flame, Clock } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { format, addDays, isSameDay, startOfDay } from 'date-fns';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Flame, Clock, Sparkles, Save, Check, RefreshCw, RotateCcw, Calendar, Search } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { MealPlan, Recipe } from '@/types/recipe';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { RecipeSource, SupabaseRecipe, DAYS_OF_WEEK, getLocalizedRecipe } from '@/types/recipe';
 import { useToast } from '@/hooks/use-toast';
+import { useMealPlan } from '@/contexts/MealPlanContext';
+import { useMealPlanGenerator } from '@/hooks/useMealPlanGenerator';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
-
-// Sample meal plan data
-const SAMPLE_MEALS: MealPlan[] = [
-  {
-    id: '1',
-    date: format(new Date(), 'yyyy-MM-dd'),
-    mealType: 'dinner',
-    recipe: {
-      uri: '1',
-      label: 'Mediterranean Grilled Chicken',
-      image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=500',
-      source: 'Home Kitchen',
-      url: '#',
-      yield: 4,
-      dietLabels: ['High-Protein'],
-      healthLabels: [],
-      cautions: [],
-      ingredientLines: [],
-      ingredients: [],
-      calories: 420,
-      totalWeight: 500,
-      totalTime: 35,
-      cuisineType: ['mediterranean'],
-      mealType: ['dinner'],
-      dishType: ['main course'],
-      totalNutrients: {},
-      totalDaily: {},
-    },
-  },
-];
+const MEAL_TYPES: ('lunch' | 'dinner')[] = ['lunch', 'dinner'];
 
 export default function MealPlanner() {
-  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [mealPlans, setMealPlans] = useState<MealPlan[]>(SAMPLE_MEALS);
+  const {
+    currentWeekStart,
+    mealSlots,
+    isFinalized,
+    isLoading,
+    setCurrentWeekStart,
+    setMealSlots,
+    addDishToMeal,
+    removeDish,
+    saveMealPlan,
+    finalizeMealPlan,
+    resetMealPlan,
+    clearMealPlan,
+  } = useMealPlan();
+
+  const { generateMealPlan, fetchRecipesBySource, isGenerating } = useMealPlanGenerator();
+  const { user, userProfile } = useAuth();
   const { toast } = useToast();
+  const { t, language } = useLanguage();
+
+  const [recipeSource, setRecipeSource] = useState<RecipeSource>('all');
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [showRecipePickerDialog, setShowRecipePickerDialog] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<{ dayOfWeek: number; mealType: 'lunch' | 'dinner' } | null>(null);
+  const [availableRecipes, setAvailableRecipes] = useState<SupabaseRecipe[]>([]);
+  const [recipesLoading, setRecipesLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [numberOfPersons, setNumberOfPersons] = useState(2);
+
+  // Recipe picker filters
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [pickerCuisine, setPickerCuisine] = useState('');
+  const [pickerPrepTime, setPickerPrepTime] = useState('');
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
-  
+
   const goToPreviousWeek = () => setCurrentWeekStart(addDays(currentWeekStart, -7));
   const goToNextWeek = () => setCurrentWeekStart(addDays(currentWeekStart, 7));
-  const goToThisWeek = () => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const goToTomorrow = () => setCurrentWeekStart(addDays(new Date(), 1));
 
-  const getMealsForDay = (date: Date, mealType: string) => {
-    return mealPlans.filter(
-      (meal) => meal.date === format(date, 'yyyy-MM-dd') && meal.mealType === mealType
-    );
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setCurrentWeekStart(startOfDay(date));
+      setShowDatePicker(false);
+    }
   };
 
-  const removeMeal = (mealId: string) => {
-    setMealPlans(prev => prev.filter(m => m.id !== mealId));
+  // Get all meals for a slot (supports multiple dishes)
+  const getMealsForSlot = (dayOfWeek: number, mealType: 'lunch' | 'dinner') => {
+    return mealSlots.filter(s => s.dayOfWeek === dayOfWeek && s.mealType === mealType);
+  };
+
+  const handleGenerateMealPlan = async () => {
+    const slots = await generateMealPlan(
+      recipeSource,
+      {
+        allergies: userProfile?.allergies,
+        dietPreferences: userProfile?.diet_preferences,
+        flavorPreferences: userProfile?.flavor_preferences,
+      },
+      numberOfPersons
+    );
+
+    if (slots.length > 0) {
+      setMealSlots(slots);
+    }
+    setShowGenerateDialog(false);
+  };
+
+  const handleRegenerate = async () => {
+    await resetMealPlan();
+  };
+
+  const handleOpenRecipePicker = async (dayOfWeek: number, mealType: 'lunch' | 'dinner') => {
+    setSelectedSlot({ dayOfWeek, mealType });
+    setRecipesLoading(true);
+    setShowRecipePickerDialog(true);
+    // Reset filters when opening picker
+    setPickerSearch('');
+    setPickerCuisine('');
+    setPickerPrepTime('');
+
+    const recipes = await fetchRecipesBySource(recipeSource);
+    setAvailableRecipes(recipes);
+    setRecipesLoading(false);
+  };
+
+  const handleSelectRecipe = (recipe: SupabaseRecipe) => {
+    if (selectedSlot) {
+      // Add dish to meal (allows multiple dishes)
+      addDishToMeal(selectedSlot.dayOfWeek, selectedSlot.mealType, recipe);
+    }
+    setShowRecipePickerDialog(false);
+    setSelectedSlot(null);
+  };
+
+  const handleRemoveDish = (dayOfWeek: number, mealType: 'lunch' | 'dinner', recipeId: number) => {
+    removeDish(dayOfWeek, mealType, recipeId);
     toast({
-      title: 'Meal removed',
-      description: 'The meal has been removed from your plan.',
+      title: t('mealPlan.mealRemoved'),
+      description: t('mealPlan.mealRemovedDesc'),
     });
   };
 
-  const totalCaloriesForDay = (date: Date) => {
-    const dayMeals = mealPlans.filter(m => m.date === format(date, 'yyyy-MM-dd'));
-    return dayMeals.reduce((sum, meal) => sum + Math.round(meal.recipe.calories / meal.recipe.yield), 0);
+  const totalCaloriesForDay = (dayOfWeek: number) => {
+    const dayMeals = mealSlots.filter(s => s.dayOfWeek === dayOfWeek && s.recipe);
+    return dayMeals.reduce((sum, meal) => sum + (meal.recipe?.calories || 0), 0);
   };
+
+  // Get unique cuisines from available recipes for filter dropdown
+  const uniqueCuisines = useMemo(() => {
+    const cuisines = new Set<string>();
+    availableRecipes.forEach(r => {
+      if (r.cuisine) cuisines.add(r.cuisine);
+    });
+    return Array.from(cuisines).sort();
+  }, [availableRecipes]);
+
+  // Filter recipes based on picker filters
+  const filteredRecipes = useMemo(() => {
+    return availableRecipes.filter(recipe => {
+      // Search filter
+      if (pickerSearch) {
+        const searchLower = pickerSearch.toLowerCase();
+        const name = (recipe.name || '').toLowerCase();
+        const englishName = (recipe.english_name || '').toLowerCase();
+        if (!name.includes(searchLower) && !englishName.includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Cuisine filter
+      if (pickerCuisine && recipe.cuisine !== pickerCuisine) {
+        return false;
+      }
+
+      // Prep time filter
+      if (pickerPrepTime) {
+        const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
+        switch (pickerPrepTime) {
+          case 'under15':
+            if (totalTime > 15) return false;
+            break;
+          case 'under30':
+            if (totalTime > 30) return false;
+            break;
+          case 'under60':
+            if (totalTime > 60) return false;
+            break;
+          case 'over60':
+            if (totalTime <= 60) return false;
+            break;
+        }
+      }
+
+      return true;
+    });
+  }, [availableRecipes, pickerSearch, pickerCuisine, pickerPrepTime]);
+
+  const totalMealsPlanned = mealSlots.filter(s => s.recipe).length;
+
+  // Calculate averages
+  const totalCalories = mealSlots.reduce((sum, m) => sum + (m.recipe?.calories || 0), 0);
+  const totalPrepTime = mealSlots.reduce((sum, m) => sum + ((m.recipe?.prep_time || 0) + (m.recipe?.cook_time || 0)), 0);
+  const avgCalories = totalMealsPlanned > 0 ? Math.round(totalCalories / totalMealsPlanned) : 0;
+  const avgPrepTime = totalMealsPlanned > 0 ? Math.round(totalPrepTime / totalMealsPlanned) : 0;
 
   return (
     <Layout>
@@ -85,25 +213,191 @@ export default function MealPlanner() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">
-              Meal Planner
+              {t('mealPlanner.title')}
             </h1>
             <p className="text-muted-foreground">
-              Plan your weekly meals and stay organized
+              {t('mealPlanner.subtitle')}
             </p>
           </div>
 
-          {/* Week Navigation */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
-              <ChevronLeft className="h-4 w-4" />
+          <div className="flex flex-wrap items-center gap-2">
+            {/* AI Generate Button */}
+            <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+              <DialogTrigger asChild>
+                <Button className="gap-2" disabled={isGenerating || isFinalized}>
+                  <Sparkles className="h-4 w-4" />
+                  {t('mealPlanner.aiGenerate')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{t('mealPlanner.generateTitle')}</DialogTitle>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    {t('mealPlanner.generateDesc')}
+                  </p>
+
+                  {/* Dishes per meal */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      {t('mealPlanner.numberOfPersons')}
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setNumberOfPersons(Math.max(1, numberOfPersons - 1))}
+                        disabled={numberOfPersons <= 1}
+                      >
+                        -
+                      </Button>
+                      <span className="text-2xl font-bold w-8 text-center">{numberOfPersons}</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setNumberOfPersons(Math.min(6, numberOfPersons + 1))}
+                        disabled={numberOfPersons >= 6}
+                      >
+                        +
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t('mealPlanner.personsDesc')}</p>
+                  </div>
+
+                  {/* Only show recipe source selection for authenticated users */}
+                  {user && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">{t('mealPlanner.recipeSource')}</label>
+                      <Select value={recipeSource} onValueChange={(v) => setRecipeSource(v as RecipeSource)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('mealPlanner.recipeSource')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">{t('mealPlanner.allRecipes')}</SelectItem>
+                          <SelectItem value="saved">{t('mealPlanner.savedRecipes')}</SelectItem>
+                          <SelectItem value="my-recipes">{t('mealPlanner.myRecipes')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {userProfile && (
+                    <div className="text-sm text-muted-foreground">
+                      <p>Your preferences will be considered:</p>
+                      <ul className="list-disc list-inside mt-1">
+                        {userProfile.allergies?.length > 0 && (
+                          <li>Allergies: {userProfile.allergies.join(', ')}</li>
+                        )}
+                        {userProfile.diet_preferences?.length > 0 && (
+                          <li>Diet: {userProfile.diet_preferences.join(', ')}</li>
+                        )}
+                        {userProfile.flavor_preferences?.length > 0 && (
+                          <li>Flavors: {userProfile.flavor_preferences.join(', ')}</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowGenerateDialog(false)}>
+                    {t('mealPlanner.cancel')}
+                  </Button>
+                  <Button onClick={handleGenerateMealPlan} disabled={isGenerating} className="gap-2">
+                    {isGenerating ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        {t('mealPlanner.generating')}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        {t('mealPlanner.generate')}
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Regenerate Button - visible when finalized */}
+            {isFinalized && (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={handleRegenerate}
+                disabled={isLoading}
+              >
+                <RotateCcw className="h-4 w-4" />
+                {t('mealPlanner.regenerate')}
+              </Button>
+            )}
+
+            {/* Save Button */}
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={saveMealPlan}
+              disabled={isLoading || mealSlots.length === 0}
+            >
+              <Save className="h-4 w-4" />
+              {t('mealPlanner.save')}
             </Button>
-            <Button variant="outline" onClick={goToThisWeek}>
-              This Week
+
+            {/* Finalize Button */}
+            <Button
+              variant={isFinalized ? "secondary" : "default"}
+              className="gap-2"
+              onClick={finalizeMealPlan}
+              disabled={isLoading || mealSlots.length === 0 || isFinalized}
+            >
+              <Check className="h-4 w-4" />
+              {isFinalized ? t('mealPlanner.finalized') : t('mealPlanner.finalize')}
             </Button>
-            <Button variant="outline" size="icon" onClick={goToNextWeek}>
-              <ChevronRight className="h-4 w-4" />
+
+            {/* Clear Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={clearMealPlan}
+              disabled={isLoading || mealSlots.length === 0}
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+
+        {/* Week Navigation */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          {/* Date Picker */}
+          <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Calendar className="h-4 w-4" />
+                {t('mealPlanner.selectStartDate')}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+              <CalendarComponent
+                mode="single"
+                selected={currentWeekStart}
+                onSelect={handleDateSelect}
+                disabled={(date) => date < new Date()}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Button variant="outline" onClick={goToTomorrow}>
+            {t('mealPlanner.startTomorrow')}
+          </Button>
+          <Button variant="outline" size="icon" onClick={goToNextWeek}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Week Header */}
@@ -111,19 +405,25 @@ export default function MealPlanner() {
           <h2 className="font-display text-xl font-semibold text-foreground">
             {format(currentWeekStart, 'MMMM d')} - {format(addDays(currentWeekStart, 6), 'MMMM d, yyyy')}
           </h2>
+          {isFinalized && (
+            <Badge variant="secondary" className="mt-2">
+              <Check className="h-3 w-3 mr-1" />
+              {t('mealPlanner.finalizedBadge')}
+            </Badge>
+          )}
         </div>
 
         {/* Calendar Grid */}
         <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-          {weekDays.map((day) => {
+          {weekDays.map((day, dayIndex) => {
             const isToday = isSameDay(day, new Date());
-            const dayCalories = totalCaloriesForDay(day);
-            
+            const dayCalories = totalCaloriesForDay(dayIndex);
+
             return (
-              <Card 
-                key={day.toISOString()} 
+              <Card
+                key={day.toISOString()}
                 className={cn(
-                  "min-h-[300px] transition-all",
+                  "min-h-[280px] transition-all",
                   isToday && "ring-2 ring-primary"
                 )}
               >
@@ -148,62 +448,78 @@ export default function MealPlanner() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {MEAL_TYPES.map((mealType) => {
-                    const meals = getMealsForDay(day, mealType);
+                    const meals = getMealsForSlot(dayIndex, mealType);
+                    const mealLabel = mealType === 'lunch' ? t('mealPlanner.lunch') : t('mealPlanner.dinner');
+                    const addLabel = mealType === 'lunch' ? t('mealPlanner.addLunch') : t('mealPlanner.addDinner');
+
                     return (
                       <div key={mealType} className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-muted-foreground capitalize">
-                            {mealType}
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {mealLabel} {meals.length > 0 && `(${meals.length})`}
                           </span>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-5 w-5">
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Add {mealType} for {format(day, 'EEEE, MMM d')}</DialogTitle>
-                              </DialogHeader>
-                              <div className="py-4 text-center text-muted-foreground">
-                                <p>Connect to Edamam API to search and add recipes.</p>
-                                <p className="text-sm mt-2">Go to the Recipes page to browse available recipes.</p>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-                        
-                        {meals.map((meal) => (
-                          <div
-                            key={meal.id}
-                            className="group relative bg-muted rounded-lg p-2 text-xs"
-                          >
-                            <img
-                              src={meal.recipe.image}
-                              alt={meal.recipe.label}
-                              className="w-full h-12 object-cover rounded mb-1"
-                            />
-                            <p className="font-medium line-clamp-1">{meal.recipe.label}</p>
-                            <div className="flex items-center gap-2 text-muted-foreground mt-0.5">
-                              <span className="flex items-center gap-0.5">
-                                <Flame className="h-3 w-3" />
-                                {Math.round(meal.recipe.calories / meal.recipe.yield)}
-                              </span>
-                              <span className="flex items-center gap-0.5">
-                                <Clock className="h-3 w-3" />
-                                {meal.recipe.totalTime}m
-                              </span>
-                            </div>
+                          {!isFinalized && (
                             <Button
-                              variant="destructive"
+                              variant="ghost"
                               size="icon"
-                              className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => removeMeal(meal.id)}
+                              className="h-5 w-5"
+                              onClick={() => handleOpenRecipePicker(dayIndex, mealType)}
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Plus className="h-3 w-3" />
                             </Button>
+                          )}
+                        </div>
+
+                        {meals.length > 0 ? (
+                          <div className="space-y-1">
+                            {meals.map((meal, idx) => meal.recipe && (
+                              <div key={`${meal.recipe.id}-${idx}`} className="group relative bg-muted rounded-lg p-2 text-xs">
+                                {meal.recipe.image_url && (
+                                  <img
+                                    src={meal.recipe.image_url}
+                                    alt={meal.recipe.name}
+                                    className="w-full h-12 object-cover rounded mb-1"
+                                  />
+                                )}
+                                <p className="font-medium line-clamp-1">{getLocalizedRecipe(meal.recipe, language).name}</p>
+                                <div className="flex items-center gap-2 text-muted-foreground mt-0.5">
+                                  {meal.recipe.calories && (
+                                    <span className="flex items-center gap-0.5">
+                                      <Flame className="h-3 w-3" />
+                                      {meal.recipe.calories}
+                                    </span>
+                                  )}
+                                  {(meal.recipe.prep_time || meal.recipe.cook_time) && (
+                                    <span className="flex items-center gap-0.5">
+                                      <Clock className="h-3 w-3" />
+                                      {(meal.recipe.prep_time || 0) + (meal.recipe.cook_time || 0)}m
+                                    </span>
+                                  )}
+                                </div>
+                                {!isFinalized && (
+                                  <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => handleRemoveDish(dayIndex, mealType, meal.recipe!.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        ) : (
+                          <div
+                            className={cn(
+                              "h-16 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors",
+                              isFinalized && "opacity-50 cursor-not-allowed"
+                            )}
+                            onClick={() => !isFinalized && handleOpenRecipePicker(dayIndex, mealType)}
+                          >
+                            <span className="text-xs text-muted-foreground">{addLabel}</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -216,35 +532,146 @@ export default function MealPlanner() {
         {/* Weekly Summary */}
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle className="font-display">Weekly Summary</CardTitle>
+            <CardTitle className="font-display">{t('mealPlanner.weeklySummary')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-muted rounded-xl">
-                <p className="text-3xl font-bold text-primary">{mealPlans.length}</p>
-                <p className="text-sm text-muted-foreground">Meals Planned</p>
+                <p className="text-3xl font-bold text-primary">{totalMealsPlanned}</p>
+                <p className="text-sm text-muted-foreground">{t('mealPlanner.mealsPlanned')}</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-xl">
                 <p className="text-3xl font-bold text-spice">
-                  {mealPlans.reduce((sum, m) => sum + Math.round(m.recipe.calories / m.recipe.yield), 0)}
+                  {avgCalories}
                 </p>
-                <p className="text-sm text-muted-foreground">Total Calories</p>
+                <p className="text-sm text-muted-foreground">{t('mealPlanner.avgCalories')}</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-xl">
                 <p className="text-3xl font-bold text-herb">
-                  {mealPlans.reduce((sum, m) => sum + m.recipe.ingredients.length, 0)}
+                  {mealSlots.reduce((sum, m) => sum + (m.recipe?.ingredients?.length || 0), 0)}
                 </p>
-                <p className="text-sm text-muted-foreground">Ingredients</p>
+                <p className="text-sm text-muted-foreground">{t('mealPlanner.ingredients')}</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-xl">
                 <p className="text-3xl font-bold text-accent">
-                  {mealPlans.reduce((sum, m) => sum + (m.recipe.totalTime || 0), 0)}
+                  {avgPrepTime}
                 </p>
-                <p className="text-sm text-muted-foreground">Total Prep (min)</p>
+                <p className="text-sm text-muted-foreground">{t('mealPlanner.avgPrepTime')}</p>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Recipe Picker Dialog */}
+        <Dialog open={showRecipePickerDialog} onOpenChange={setShowRecipePickerDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {t('mealPlanner.selectRecipe')} {selectedSlot && DAYS_OF_WEEK[selectedSlot.dayOfWeek]} {selectedSlot?.mealType === 'lunch' ? t('mealPlanner.lunch') : t('mealPlanner.dinner')}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t('mealPlanner.searchRecipes')}
+                  value={pickerSearch}
+                  onChange={(e) => setPickerSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Cuisine and Prep Time Filters */}
+              <div className="flex gap-2">
+                <Select value={pickerCuisine || 'all'} onValueChange={(v) => setPickerCuisine(v === 'all' ? '' : v)}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder={t('mealPlanner.filterByCuisine')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('mealPlanner.filterByCuisine')}</SelectItem>
+                    {uniqueCuisines.map((cuisine) => (
+                      <SelectItem key={cuisine} value={cuisine}>{cuisine}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={pickerPrepTime || 'all'} onValueChange={(v) => setPickerPrepTime(v === 'all' ? '' : v)}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder={t('mealPlanner.filterByTime')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('mealPlanner.filterByTime')}</SelectItem>
+                    <SelectItem value="under15">{t('mealPlanner.under15min')}</SelectItem>
+                    <SelectItem value="under30">{t('mealPlanner.under30min')}</SelectItem>
+                    <SelectItem value="under60">{t('mealPlanner.under60min')}</SelectItem>
+                    <SelectItem value="over60">{t('mealPlanner.over60min')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Results count */}
+              {!recipesLoading && availableRecipes.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {filteredRecipes.length} {language === 'zh' ? '个结果' : 'results'}
+                </p>
+              )}
+
+              {/* Recipe Grid */}
+              <div className="max-h-[50vh] overflow-y-auto pr-2">
+                {recipesLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredRecipes.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p>{t('mealPlanner.noRecipesFound')}</p>
+                    <p className="text-sm mt-2">{t('mealPlanner.tryDifferentSource')}</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {filteredRecipes.map((recipe) => (
+                      <Card
+                        key={recipe.id}
+                        className="cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                        onClick={() => handleSelectRecipe(recipe)}
+                      >
+                        <CardContent className="p-3">
+                          {recipe.image_url && (
+                            <img
+                              src={recipe.image_url}
+                              alt={recipe.name}
+                              className="w-full h-24 object-cover rounded mb-2"
+                            />
+                          )}
+                          <p className="font-medium text-sm line-clamp-2">{getLocalizedRecipe(recipe, language).name}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-muted-foreground">
+                            {recipe.cuisine && (
+                              <Badge variant="outline" className="text-xs">{recipe.cuisine}</Badge>
+                            )}
+                            {recipe.calories && (
+                              <span className="flex items-center gap-0.5">
+                                <Flame className="h-3 w-3" />
+                                {recipe.calories}
+                              </span>
+                            )}
+                            {(recipe.prep_time || recipe.cook_time) && (
+                              <span className="flex items-center gap-0.5">
+                                <Clock className="h-3 w-3" />
+                                {(recipe.prep_time || 0) + (recipe.cook_time || 0)}m
+                              </span>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

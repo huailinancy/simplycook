@@ -16,7 +16,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { SearchFilters, CUISINE_TYPES, MEAL_TYPES, DIET_LABELS, TIME_RANGES } from '@/types/recipe';
+import { SearchFilters, TIME_RANGES } from '@/types/recipe';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
+import { useLanguage, translateFilterValue, getTimeRangeLabel } from '@/contexts/LanguageContext';
 import { useState } from 'react';
 
 interface RecipeFiltersProps {
@@ -27,6 +29,8 @@ interface RecipeFiltersProps {
 
 export function RecipeFilters({ filters, onFiltersChange, onSearch }: RecipeFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { cuisines, mealTypes, isLoading: filtersLoading } = useFilterOptions();
+  const { t, language } = useLanguage();
 
   const updateFilter = (key: keyof SearchFilters, value: string) => {
     onFiltersChange({ ...filters, [key]: value || undefined });
@@ -51,7 +55,7 @@ export function RecipeFilters({ filters, onFiltersChange, onSearch }: RecipeFilt
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search for recipes, ingredients..."
+            placeholder={t('recipes.searchPlaceholder')}
             value={filters.query}
             onChange={(e) => updateFilter('query', e.target.value)}
             onKeyDown={handleKeyDown}
@@ -73,27 +77,27 @@ export function RecipeFilters({ filters, onFiltersChange, onSearch }: RecipeFilt
           </SheetTrigger>
           <SheetContent>
             <SheetHeader>
-              <SheetTitle>Filters</SheetTitle>
+              <SheetTitle>{t('recipes.filters')}</SheetTitle>
             </SheetHeader>
             <div className="space-y-4 mt-6">
-              <FilterSelects filters={filters} updateFilter={updateFilter} />
+              <FilterSelects filters={filters} updateFilter={updateFilter} cuisines={cuisines} mealTypes={mealTypes} t={t} language={language} />
             </div>
           </SheetContent>
         </Sheet>
 
         <Button onClick={onSearch} className="h-12 px-6 btn-primary-gradient border-0">
-          Search
+          {t('recipes.search')}
         </Button>
       </div>
 
       {/* Desktop filters */}
       <div className="hidden md:flex flex-wrap gap-3">
-        <FilterSelects filters={filters} updateFilter={updateFilter} />
-        
+        <FilterSelects filters={filters} updateFilter={updateFilter} cuisines={cuisines} mealTypes={mealTypes} t={t} language={language} />
+
         {activeFiltersCount > 0 && (
           <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
             <X className="h-4 w-4 mr-1" />
-            Clear filters
+            {t('recipes.clearFilters')}
           </Button>
         )}
       </div>
@@ -103,25 +107,19 @@ export function RecipeFilters({ filters, onFiltersChange, onSearch }: RecipeFilt
         <div className="flex flex-wrap gap-2">
           {filters.cuisineType && (
             <Badge variant="secondary" className="gap-1">
-              Cuisine: {filters.cuisineType}
+              {t('recipes.cuisine')}: {translateFilterValue(filters.cuisineType, language, 'cuisine')}
               <X className="h-3 w-3 cursor-pointer" onClick={() => updateFilter('cuisineType', '')} />
             </Badge>
           )}
           {filters.mealType && (
             <Badge variant="secondary" className="gap-1">
-              Meal: {filters.mealType}
+              {t('recipes.mealType')}: {translateFilterValue(filters.mealType, language, 'mealType')}
               <X className="h-3 w-3 cursor-pointer" onClick={() => updateFilter('mealType', '')} />
-            </Badge>
-          )}
-          {filters.diet && (
-            <Badge variant="secondary" className="gap-1">
-              Diet: {filters.diet}
-              <X className="h-3 w-3 cursor-pointer" onClick={() => updateFilter('diet', '')} />
             </Badge>
           )}
           {filters.time && (
             <Badge variant="secondary" className="gap-1">
-              Time: {TIME_RANGES.find(t => t.value === filters.time)?.label}
+              {t('recipes.time')}: {getTimeRangeLabel(filters.time, language)}
               <X className="h-3 w-3 cursor-pointer" onClick={() => updateFilter('time', '')} />
             </Badge>
           )}
@@ -131,23 +129,31 @@ export function RecipeFilters({ filters, onFiltersChange, onSearch }: RecipeFilt
   );
 }
 
-function FilterSelects({ 
-  filters, 
-  updateFilter 
-}: { 
-  filters: SearchFilters; 
+function FilterSelects({
+  filters,
+  updateFilter,
+  cuisines,
+  mealTypes,
+  t,
+  language,
+}: {
+  filters: SearchFilters;
   updateFilter: (key: keyof SearchFilters, value: string) => void;
+  cuisines: string[];
+  mealTypes: string[];
+  t: (key: string) => string;
+  language: 'en' | 'zh';
 }) {
   return (
     <>
       <Select value={filters.cuisineType || ''} onValueChange={(v) => updateFilter('cuisineType', v)}>
         <SelectTrigger className="w-full md:w-[160px] bg-card">
-          <SelectValue placeholder="Cuisine" />
+          <SelectValue placeholder={t('recipes.cuisine')} />
         </SelectTrigger>
         <SelectContent>
-          {CUISINE_TYPES.map((cuisine) => (
-            <SelectItem key={cuisine} value={cuisine.toLowerCase()}>
-              {cuisine}
+          {cuisines.map((cuisine) => (
+            <SelectItem key={cuisine} value={cuisine}>
+              {translateFilterValue(cuisine, language, 'cuisine')}
             </SelectItem>
           ))}
         </SelectContent>
@@ -155,25 +161,12 @@ function FilterSelects({
 
       <Select value={filters.mealType || ''} onValueChange={(v) => updateFilter('mealType', v)}>
         <SelectTrigger className="w-full md:w-[140px] bg-card">
-          <SelectValue placeholder="Meal Type" />
+          <SelectValue placeholder={t('recipes.mealType')} />
         </SelectTrigger>
         <SelectContent>
-          {MEAL_TYPES.map((meal) => (
-            <SelectItem key={meal} value={meal.toLowerCase()}>
-              {meal}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select value={filters.diet || ''} onValueChange={(v) => updateFilter('diet', v)}>
-        <SelectTrigger className="w-full md:w-[140px] bg-card">
-          <SelectValue placeholder="Diet" />
-        </SelectTrigger>
-        <SelectContent>
-          {DIET_LABELS.map((diet) => (
-            <SelectItem key={diet} value={diet}>
-              {diet.charAt(0).toUpperCase() + diet.slice(1)}
+          {mealTypes.map((meal) => (
+            <SelectItem key={meal} value={meal}>
+              {translateFilterValue(meal, language, 'mealType')}
             </SelectItem>
           ))}
         </SelectContent>
@@ -181,12 +174,12 @@ function FilterSelects({
 
       <Select value={filters.time || ''} onValueChange={(v) => updateFilter('time', v)}>
         <SelectTrigger className="w-full md:w-[140px] bg-card">
-          <SelectValue placeholder="Cook Time" />
+          <SelectValue placeholder={t('recipes.time')} />
         </SelectTrigger>
         <SelectContent>
           {TIME_RANGES.map((range) => (
             <SelectItem key={range.value} value={range.value}>
-              {range.label}
+              {getTimeRangeLabel(range.value, language)}
             </SelectItem>
           ))}
         </SelectContent>
