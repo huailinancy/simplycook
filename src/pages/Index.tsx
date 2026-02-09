@@ -34,12 +34,12 @@ export default function Index() {
               <span className="text-sm font-medium">{t('home.recipeCompanion')}</span>
             </div>
 
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
+            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
               {t('home.heroTitle1')} <span className="text-primary">{t('home.heroTitle2')}</span>,<br />
               {t('home.heroTitle3')}
             </h1>
 
-            <p className="text-lg text-muted-foreground max-w-lg">
+            <p className="text-xl text-muted-foreground max-w-lg">
               {t('home.heroDesc')}
             </p>
 
