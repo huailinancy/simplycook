@@ -6,115 +6,97 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { MealSlot, SupabaseRecipe, WeeklyMealPlan, GroceryItem, GROCERY_CATEGORIES, getLocalizedRecipe } from '@/types/recipe';
 import { format, startOfWeek, addDays } from 'date-fns';
 
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-
-// Helper function to generate grocery list using AI when recipe ingredients are not available
+// Helper function to generate grocery list using Supabase Edge Function
 async function generateGroceryListWithAI(recipeNames: string[], language: 'en' | 'zh' = 'zh'): Promise<GroceryItem[]> {
   console.log('generateGroceryListWithAI called with', recipeNames.length, 'recipes');
 
-  if (!OPENAI_API_KEY) {
-    throw new Error('OpenAI API key is not configured');
-  }
-
-  const languageInstruction = language === 'en'
-    ? 'Generate ingredient names in English.'
-    : 'Generate ingredient names in Chinese (中文).';
-
-  const prompt = `You are a grocery shopping assistant. Based on the following recipe names, generate a combined grocery shopping list with estimated quantities.
-
-Recipes:
-${recipeNames.map((name, i) => `${i + 1}. ${name}`).join('\n')}
-
-Generate a JSON array of grocery items. ${languageInstruction} Each item should have:
-- name: ingredient name (lowercase, in ${language === 'en' ? 'English' : 'Chinese'})
-- quantity: estimated number needed
-- unit: unit of measurement (e.g., ${language === 'en' ? '"pieces", "lbs", "oz", "bunch", "can", "bottle"' : '"个", "斤", "克", "把", "罐", "瓶"'})
-- category: one of "Produce", "Meat & Seafood", "Dairy", "Pantry", "Frozen", "Spices & Seasonings", "Other"
-
-Combine similar ingredients and estimate reasonable quantities for cooking these dishes.
-Return ONLY valid JSON array, no other text.`;
-
-  console.log('Calling OpenAI API...');
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+  const { data, error } = await supabase.functions.invoke('generate-grocery-list', {
+    body: {
+      recipeNames,
+      language,
     },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are a helpful cooking assistant. Always respond with valid JSON only.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.5,
-      max_tokens: 2000,
-    }),
   });
 
-  console.log('OpenAI response status:', response.status);
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    console.error('OpenAI API error:', errorData);
-    throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+  if (error) {
+    throw new Error(error.message || 'Failed to generate grocery list');
   }
 
-  const data = await response.json();
-  console.log('OpenAI response received');
-  const content = data.choices[0]?.message?.content;
-
-  if (!content) {
-    throw new Error('No response from AI');
+  if (data.error) {
+    throw new Error(data.error);
   }
 
-  // Helper to match AI category to our predefined categories
-  const matchCategory = (aiCategory: string): string => {
-    const cat = (aiCategory || '').toLowerCase().trim();
+  // Parse the text response into grocery items
+  const groceryText = data.groceryList;
+  const lines = groceryText.split('\n').filter((line: string) => line.trim());
 
-    if (cat.includes('produce') || cat.includes('vegetable') || cat.includes('fruit')) {
-      return 'Produce';
-    }
-    if (cat.includes('meat') || cat.includes('seafood') || cat.includes('fish') || cat.includes('poultry') || cat.includes('protein')) {
-      return 'Meat & Seafood';
-    }
-    if (cat.includes('dairy') || cat.includes('milk') || cat.includes('cheese') || cat.includes('egg')) {
-      return 'Dairy';
-    }
-    if (cat.includes('pantry') || cat.includes('grain') || cat.includes('pasta') || cat.includes('rice') || cat.includes('canned') || cat.includes('dry')) {
-      return 'Pantry';
-    }
-    if (cat.includes('frozen')) {
-      return 'Frozen';
-    }
-    if (cat.includes('spice') || cat.includes('season') || cat.includes('herb') || cat.includes('condiment') || cat.includes('sauce')) {
-      return 'Spices & Seasonings';
-    }
-    return 'Other';
-  };
+  const items: GroceryItem[] = [];
+  let currentCategory = 'Other';
 
-  // Parse the response
-  try {
-    const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    console.log('Parsing AI response...');
-    console.log('Raw AI content:', cleanContent.substring(0, 500));
-    const items: { name: string; quantity: number; unit: string; category: string }[] = JSON.parse(cleanContent);
-    console.log('Parsed', items.length, 'items from AI');
-    console.log('First 3 items:', JSON.stringify(items.slice(0, 3), null, 2));
+  for (const line of lines) {
+    const trimmed = line.trim();
 
-    return items.map((item, index) => ({
-      id: `ai-${index}`,
-      name: item.name.charAt(0).toUpperCase() + item.name.slice(1),
-      quantity: item.quantity || 1,
-      unit: item.unit || 'item',
-      category: matchCategory(item.category),
+    // Check if this is a category header
+    if (trimmed.endsWith(':') || trimmed.match(/^(Proteins?|Vegetables?|Seasonings?|Sauces?|Staples?|Produce|Meat|Seafood|Dairy|Pantry|Frozen|Spices?|Other|肉类|蔬菜|调味料|主食|其他)/i)) {
+      currentCategory = matchCategory(trimmed.replace(':', '').trim());
+      continue;
+    }
+
+    // Skip empty lines or headers
+    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('---')) continue;
+
+    // Parse ingredient line (e.g., "- Chicken breast: 500g" or "鸡胸肉 500克")
+    const cleanLine = trimmed.replace(/^[-*•]\s*/, '').trim();
+    if (!cleanLine) continue;
+
+    // Try to extract quantity and unit
+    const match = cleanLine.match(/(.+?)[:：]?\s*([\d.]+)?\s*(g|kg|ml|L|oz|lb|lbs|cups?|tbsp|tsp|pieces?|个|斤|克|毫升|升|把|根|瓶|罐|包)?$/i);
+
+    let name = cleanLine;
+    let quantity = 1;
+    let unit = language === 'en' ? 'item' : '个';
+
+    if (match) {
+      name = match[1].trim();
+      if (match[2]) quantity = parseFloat(match[2]);
+      if (match[3]) unit = match[3];
+    }
+
+    items.push({
+      id: `ai-${items.length}`,
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      quantity,
+      unit,
+      category: currentCategory,
       checked: false,
-    }));
-  } catch (parseError) {
-    console.error('Failed to parse AI response:', content);
-    throw new Error('Failed to parse grocery list from AI response');
+    });
   }
+
+  return items;
+}
+
+// Helper to match AI category to our predefined categories
+function matchCategory(aiCategory: string): string {
+  const cat = (aiCategory || '').toLowerCase().trim();
+
+  if (cat.includes('produce') || cat.includes('vegetable') || cat.includes('fruit') || cat.includes('蔬菜')) {
+    return 'Produce';
+  }
+  if (cat.includes('meat') || cat.includes('seafood') || cat.includes('fish') || cat.includes('poultry') || cat.includes('protein') || cat.includes('肉')) {
+    return 'Meat & Seafood';
+  }
+  if (cat.includes('dairy') || cat.includes('milk') || cat.includes('cheese') || cat.includes('egg') || cat.includes('奶') || cat.includes('蛋')) {
+    return 'Dairy';
+  }
+  if (cat.includes('pantry') || cat.includes('grain') || cat.includes('pasta') || cat.includes('rice') || cat.includes('canned') || cat.includes('dry') || cat.includes('staple') || cat.includes('主食')) {
+    return 'Pantry';
+  }
+  if (cat.includes('frozen')) {
+    return 'Frozen';
+  }
+  if (cat.includes('spice') || cat.includes('season') || cat.includes('herb') || cat.includes('condiment') || cat.includes('sauce') || cat.includes('调味')) {
+    return 'Spices & Seasonings';
+  }
+  return 'Other';
 }
 
 interface MealPlanContextType {
@@ -501,14 +483,6 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
   // Generate grocery list from finalized meal plan
   const generateGroceryList = useCallback(async (): Promise<GroceryItem[]> => {
     console.log('generateGroceryList called', { isFinalized, mealSlotsCount: mealSlots.length });
-    console.log('Meal slots data:', JSON.stringify(mealSlots.map(s => ({
-      day: s.dayOfWeek,
-      meal: s.mealType,
-      recipeName: s.recipe?.name,
-      hasIngredients: !!s.recipe?.ingredients,
-      ingredientsCount: s.recipe?.ingredients?.length || 0,
-      ingredients: s.recipe?.ingredients
-    })), null, 2));
 
     if (!isFinalized) {
       toast({
@@ -528,66 +502,68 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
       return [];
     }
 
-    // When English is selected, prefer AI generation for proper English ingredient names
-    // This ensures grocery list is in English even if database only has Chinese ingredients
-    if (language === 'en') {
-      console.log('English mode: Using AI to generate grocery list for proper translation');
-      const recipeNames = mealSlots
-        .filter(s => s.recipe)
-        .map(s => getLocalizedRecipe(s.recipe!, language).name)
-        .filter((name, index, self) => self.indexOf(name) === index);
+    // Get localized recipe names for AI generation
+    const recipeNames = mealSlots
+      .filter(s => s.recipe)
+      .map(s => getLocalizedRecipe(s.recipe!, language).name)
+      .filter((name, index, self) => self.indexOf(name) === index);
 
-      if (recipeNames.length > 0) {
-        try {
-          const aiGroceryList = await generateGroceryListWithAI(recipeNames, language);
-          if (aiGroceryList.length > 0) {
-            toast({
-              title: t('groceryList.generated'),
-              description: `${aiGroceryList.length} ${t('groceryList.aiGeneratedDesc')}`,
-            });
-            return aiGroceryList;
-          }
-        } catch (aiError: any) {
-          console.error('AI grocery generation failed:', aiError);
-          // Fall through to try database ingredients
+    console.log('Recipe names for grocery generation:', recipeNames);
+
+    if (recipeNames.length > 0) {
+      try {
+        console.log('Calling Edge Function to generate grocery list...');
+        const aiGroceryList = await generateGroceryListWithAI(recipeNames, language);
+        console.log('Generated items:', aiGroceryList.length);
+
+        if (aiGroceryList.length > 0) {
+          toast({
+            title: t('groceryList.generated'),
+            description: `${aiGroceryList.length} ${t('groceryList.aiGeneratedDesc')}`,
+          });
+          return aiGroceryList;
         }
+      } catch (aiError: any) {
+        console.error('Grocery generation failed:', aiError);
+        toast({
+          title: 'Generation Failed',
+          description: aiError?.message || 'Failed to generate grocery list',
+          variant: 'destructive',
+        });
+
+        // Fall back to extracting from recipe ingredients
+        return extractIngredientsFromRecipes();
       }
     }
 
-    // Collect all ingredients from all recipes using localized content
+    return extractIngredientsFromRecipes();
+  }, [isFinalized, mealSlots, toast, language, t]);
+
+  // Extract ingredients directly from recipe data as fallback
+  const extractIngredientsFromRecipes = useCallback((): GroceryItem[] => {
     const ingredientMap = new Map<string, { quantity: number; unit: string; category: string }>();
 
-    let totalIngredients = 0;
     for (const slot of mealSlots) {
       if (!slot.recipe) continue;
 
-      // Get localized ingredients based on language
       const localizedRecipe = getLocalizedRecipe(slot.recipe, language);
       const ingredients = localizedRecipe.ingredients;
 
-      if (!ingredients || ingredients.length === 0) {
-        console.log('Slot has no ingredients:', slot.recipe?.name);
-        continue;
-      }
+      if (!ingredients || ingredients.length === 0) continue;
 
       for (const ingredient of ingredients) {
-        // Skip ingredients without a name
         if (!ingredient.name) continue;
 
-        totalIngredients++;
         const key = ingredient.name.toLowerCase().trim();
         const existing = ingredientMap.get(key);
 
-        // Handle both formats: {quantity, unit} or {amount}
         let qty: number;
         let unit: string;
 
         if (typeof (ingredient as any).quantity === 'number') {
-          // New format: separate quantity and unit fields
           qty = (ingredient as any).quantity || 1;
           unit = (ingredient as any).unit || (language === 'en' ? 'item' : '个');
         } else if (ingredient.amount) {
-          // Old format: amount as string like "2 cups"
           const numMatch = ingredient.amount.match(/[\d.]+/);
           qty = numMatch ? parseFloat(numMatch[0]) : 1;
           unit = ingredient.amount.replace(/[\d.]/g, '').trim() || (language === 'en' ? 'item' : '个');
@@ -597,63 +573,22 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
         }
 
         if (existing) {
-          // Try to combine quantities if units match
           if (existing.unit === unit) {
             existing.quantity += qty;
           } else {
-            // Different units - just add 1
             existing.quantity += 1;
           }
         } else {
-          // Categorize ingredient
-          const category = categorizeIngredient(ingredient.name);
-
           ingredientMap.set(key, {
             quantity: qty,
             unit,
-            category,
+            category: categorizeIngredient(ingredient.name),
           });
         }
       }
     }
 
-    console.log('Total ingredients found:', totalIngredients, 'Unique items:', ingredientMap.size);
-
-    // If no ingredients found from recipe data, try to generate using AI
     if (ingredientMap.size === 0) {
-      console.log('No ingredients in database, attempting AI generation...');
-
-      // Get localized recipe names for AI generation
-      const recipeNames = mealSlots
-        .filter(s => s.recipe)
-        .map(s => getLocalizedRecipe(s.recipe!, language).name)
-        .filter((name, index, self) => self.indexOf(name) === index); // unique names
-
-      console.log('Recipe names for AI generation:', recipeNames);
-
-      if (recipeNames.length > 0) {
-        try {
-          console.log('Calling AI to generate grocery list...');
-          const aiGroceryList = await generateGroceryListWithAI(recipeNames, language);
-          console.log('AI generated items:', aiGroceryList.length);
-          if (aiGroceryList.length > 0) {
-            toast({
-              title: t('groceryList.generated'),
-              description: `${aiGroceryList.length} ${t('groceryList.aiGeneratedDesc')}`,
-            });
-            return aiGroceryList;
-          }
-        } catch (aiError: any) {
-          console.error('AI grocery generation failed:', aiError);
-          toast({
-            title: 'AI Generation Failed',
-            description: aiError?.message || 'Failed to generate grocery list with AI',
-            variant: 'destructive',
-          });
-          return [];
-        }
-      }
-
       toast({
         title: t('groceryList.noIngredientsFound'),
         description: t('groceryList.noIngredientsDesc'),
@@ -662,7 +597,6 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
       return [];
     }
 
-    // Convert to GroceryItem array
     const groceryList: GroceryItem[] = Array.from(ingredientMap.entries()).map(([name, data], index) => ({
       id: `gen-${index}`,
       name: name.charAt(0).toUpperCase() + name.slice(1),
@@ -678,7 +612,7 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     });
 
     return groceryList;
-  }, [isFinalized, mealSlots, toast, language, t]);
+  }, [mealSlots, language, toast, t]);
 
   return (
     <MealPlanContext.Provider value={{
@@ -718,27 +652,22 @@ export function useMealPlan() {
 function categorizeIngredient(name: string): string {
   const nameLower = name.toLowerCase();
 
-  // Produce (English + Chinese)
   if (/vegetable|lettuce|tomato|onion|garlic|pepper|carrot|celery|cucumber|broccoli|spinach|cabbage|mushroom|potato|eggplant|zucchini|bean|pea|corn|ginger|scallion|chive|cilantro|parsley|basil|herb|茄子|番茄|西红柿|洋葱|葱|蒜|辣椒|青椒|胡萝卜|芹菜|黄瓜|西兰花|菠菜|白菜|蘑菇|香菇|金针菇|木耳|土豆|马铃薯|豆|玉米|姜|生姜|香菜|韭菜|萝卜|青菜|菜|瓜|笋|藕|芋|豆芽|豆腐|菌/.test(nameLower)) {
     return 'Produce';
   }
 
-  // Meat & Seafood (English + Chinese)
   if (/chicken|beef|pork|lamb|fish|shrimp|prawn|crab|lobster|meat|steak|bacon|sausage|ham|turkey|duck|seafood|salmon|tuna|cod|intestine|鸡|牛|猪|羊|鱼|虾|蟹|龙虾|肉|培根|香肠|火腿|鸭|三文鱼|金枪鱼|排骨|肥肠|腊肉|腊肠|鱿鱼|贝|蛤|蚝|海鲜/.test(nameLower)) {
     return 'Meat & Seafood';
   }
 
-  // Dairy (English + Chinese)
   if (/milk|cream|cheese|butter|yogurt|egg|dairy|牛奶|奶|奶酪|芝士|黄油|酸奶|蛋|鸡蛋/.test(nameLower)) {
     return 'Dairy';
   }
 
-  // Spices & Seasonings (English + Chinese)
   if (/spice|pepper|salt|cumin|paprika|cinnamon|oregano|thyme|rosemary|bay|chili|curry|garam|turmeric|coriander|fennel|star anise|sichuan|szechuan|five spice|sesame|soy sauce|vinegar|oil|sauce|paste|seasoning|盐|糖|冰糖|白糖|红糖|酱|醋|油|生抽|老抽|酱油|蚝油|料酒|味精|鸡精|胡椒|花椒|八角|桂皮|香料|调料|辣椒|豆瓣|芝麻|麻油|香油|葱姜蒜|五香粉|十三香|孜然/.test(nameLower)) {
     return 'Spices & Seasonings';
   }
 
-  // Pantry (English + Chinese)
   if (/rice|noodle|pasta|flour|honey|bread|cereal|oat|bean|lentil|chickpea|tofu|can|dried|nut|peanut|almond|seed|stock|broth|米|面|粉|蜂蜜|面包|燕麦|干|罐|坚果|花生|杏仁|淀粉|高汤|汤/.test(nameLower)) {
     return 'Pantry';
   }
