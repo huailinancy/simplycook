@@ -110,7 +110,7 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
       </div>
 
       <div className="p-4">
-        <h3 className="font-display text-lg font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+        <h3 className="font-display text-lg font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors capitalize">
           {recipe.label}
         </h3>
         <p className="text-sm text-muted-foreground mt-1 mb-3">
