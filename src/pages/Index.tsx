@@ -29,12 +29,12 @@ export default function Index() {
 
         <div className="container relative py-24 md:py-32 lg:py-40">
           <div className={`max-w-2xl space-y-6 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary">
-              <ChefHat className="h-4 w-4" />
-              <span className="text-sm font-medium">{t('home.recipeCompanion')}</span>
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 text-primary">
+              <ChefHat className="h-5 w-5" />
+              <span className="text-base md:text-lg font-medium">{t('home.recipeCompanion')}</span>
             </div>
 
-            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
+            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold text-foreground leading-tight">
               {t('home.heroTitle1')} <span className="text-primary">{t('home.heroTitle2')}</span>,<br />
               {t('home.heroTitle3')}
             </h1>
