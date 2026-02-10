@@ -15,11 +15,11 @@ export function useFilterOptions(): FilterOptions {
   useEffect(() => {
     async function fetchFilterOptions() {
       try {
-        // Fetch all recipes to extract unique values
+        // Fetch only system recipes (user_id is null)
         const { data, error } = await supabase
           .from('recipes')
           .select('cuisine, meal_type')
-          .or('user_id.is.null,is_published.eq.true');
+          .is('user_id', null);
 
         if (error) throw error;
 

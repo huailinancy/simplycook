@@ -53,7 +53,8 @@ export function useMealPlanGenerator() {
           .is('user_id', null);
 
         if (error) throw error;
-        return data as SupabaseRecipe[];
+        // Client-side backup filter to ensure no private recipes
+        return (data as SupabaseRecipe[]).filter(r => !r.user_id);
       }
     } catch (err) {
       console.error('Error fetching recipes:', err);

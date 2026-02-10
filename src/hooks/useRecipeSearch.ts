@@ -73,6 +73,9 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
 
       let fetchedRecipes = data as SupabaseRecipe[];
 
+      // IMPORTANT: Filter out private recipes (client-side backup)
+      fetchedRecipes = fetchedRecipes.filter(recipe => !recipe.user_id);
+
       // Apply client-side time filtering for accuracy
       if (filters.time) {
         fetchedRecipes = fetchedRecipes.filter(recipe => {
