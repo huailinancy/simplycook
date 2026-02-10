@@ -123,37 +123,35 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
         .from('meal_plans')
         .select('*')
         .eq('user_id', user.id)
-        .eq('week_start', weekStartStr)
-        .single();
+        .eq('name', weekStartStr)
+        .maybeSingle();
 
-      if (planError) {
-        if (planError.code === 'PGRST116') {
-          setMealSlots([]);
-          setIsFinalized(false);
-          setMealPlanId(null);
-          return;
-        }
-        throw planError;
+      if (planError) throw planError;
+
+      if (!planData) {
+        setMealSlots([]);
+        setIsFinalized(false);
+        setMealPlanId(null);
+        return;
       }
 
       setMealPlanId(planData.id);
-      setIsFinalized(planData.is_finalized || false);
-
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('meal_plan_items')
-        .select(`id, day_of_week, meal_type, recipe_id, recipes (*)`)
-        .eq('meal_plan_id', planData.id);
-
-      if (itemsError) throw itemsError;
-
-      const slots: MealSlot[] = (itemsData || []).map((item: any) => ({
-        id: item.id,
-        dayOfWeek: item.day_of_week,
-        mealType: item.meal_type as 'lunch' | 'dinner',
-        recipe: item.recipes as SupabaseRecipe,
-      }));
-
-      setMealSlots(slots);
+      
+      // Parse meal_slots JSON - it stores { slots: MealSlot[], isFinalized: boolean }
+      const stored = planData.meal_slots as any;
+      if (stored && typeof stored === 'object') {
+        setIsFinalized(stored.isFinalized || false);
+        const slots: MealSlot[] = (stored.slots || []).map((item: any) => ({
+          id: item.id,
+          dayOfWeek: item.dayOfWeek,
+          mealType: item.mealType as 'lunch' | 'dinner',
+          recipe: item.recipe as SupabaseRecipe | null,
+        }));
+        setMealSlots(slots);
+      } else {
+        setMealSlots([]);
+        setIsFinalized(false);
+      }
     } catch (error) {
       console.error('Error loading meal plan:', error);
     } finally {
@@ -171,39 +169,29 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     try {
       const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
 
+      const mealSlotsJson = {
+        isFinalized: isFinalized,
+        slots: mealSlots.filter(slot => slot.recipe).map(slot => ({
+          dayOfWeek: slot.dayOfWeek,
+          mealType: slot.mealType,
+          recipe: slot.recipe,
+        })),
+      };
+
       const { data: planData, error: planError } = await supabase
         .from('meal_plans')
         .upsert({
           user_id: user.id,
-          week_start: weekStartStr,
-          is_finalized: isFinalized,
+          name: weekStartStr,
+          meal_slots: mealSlotsJson as any,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,week_start' })
+        }, { onConflict: 'user_id,name' })
         .select()
         .single();
 
       if (planError) throw planError;
 
-      const planId = planData.id;
-      setMealPlanId(planId);
-
-      await supabase.from('meal_plan_items').delete().eq('meal_plan_id', planId);
-
-      if (mealSlots.length > 0) {
-        const items = mealSlots
-          .filter(slot => slot.recipe)
-          .map(slot => ({
-            meal_plan_id: planId,
-            recipe_id: slot.recipe!.id,
-            day_of_week: slot.dayOfWeek,
-            meal_type: slot.mealType,
-          }));
-
-        if (items.length > 0) {
-          await supabase.from('meal_plan_items').insert(items);
-        }
-      }
-
+      setMealPlanId(planData!.id);
       toast({ title: t('mealPlan.saved'), description: t('mealPlan.savedDesc') });
     } catch (error) {
       console.error('Error saving meal plan:', error);
@@ -228,37 +216,29 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     try {
       const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
 
+      const mealSlotsJson = {
+        isFinalized: true,
+        slots: mealSlots.filter(slot => slot.recipe).map(slot => ({
+          dayOfWeek: slot.dayOfWeek,
+          mealType: slot.mealType,
+          recipe: slot.recipe,
+        })),
+      };
+
       const { data: planData, error: planError } = await supabase
         .from('meal_plans')
         .upsert({
           user_id: user.id,
-          week_start: weekStartStr,
-          is_finalized: true,
+          name: weekStartStr,
+          meal_slots: mealSlotsJson as any,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,week_start' })
+        }, { onConflict: 'user_id,name' })
         .select()
         .single();
 
       if (planError) throw planError;
 
-      const planId = planData.id;
-      setMealPlanId(planId);
-
-      await supabase.from('meal_plan_items').delete().eq('meal_plan_id', planId);
-
-      const items = mealSlots
-        .filter(slot => slot.recipe)
-        .map(slot => ({
-          meal_plan_id: planId,
-          recipe_id: slot.recipe!.id,
-          day_of_week: slot.dayOfWeek,
-          meal_type: slot.mealType,
-        }));
-
-      if (items.length > 0) {
-        await supabase.from('meal_plan_items').insert(items);
-      }
-
+      setMealPlanId(planData!.id);
       setIsFinalized(true);
       toast({ title: t('mealPlan.finalized'), description: t('mealPlan.finalizedDesc') });
     } catch (error: any) {
@@ -312,7 +292,8 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       if (mealPlanId) {
-        await supabase.from('meal_plans').update({ is_finalized: false, updated_at: new Date().toISOString() }).eq('id', mealPlanId);
+        const mealSlotsJson = { isFinalized: false, slots: [] };
+        await supabase.from('meal_plans').update({ meal_slots: mealSlotsJson as any, updated_at: new Date().toISOString() }).eq('id', mealPlanId);
       }
       setMealSlots([]);
       setIsFinalized(false);
@@ -348,9 +329,6 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
 
       for (const ingredient of ingredients) {
         if (!ingredient.name) continue;
-
-        const key = ingredient.name.toLowerCase().trim();
-        const existing = ingredientMap.get(key);
 
         let qty: number;
         let unit: string;

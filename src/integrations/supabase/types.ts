@@ -14,7 +14,167 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      meal_plans: {
+        Row: {
+          created_at: string | null
+          id: string
+          meal_slots: Json | null
+          name: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          meal_slots?: Json | null
+          name?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          meal_slots?: Json | null
+          name?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recipes: {
+        Row: {
+          calories: number | null
+          category: string | null
+          cook_time: number | null
+          created_at: string | null
+          cuisine: string | null
+          description: string | null
+          difficulty: string | null
+          english_ingredients: Json | null
+          english_instructions: Json | null
+          english_name: string | null
+          id: number
+          image_url: string | null
+          ingredients: Json | null
+          instructions: Json | null
+          is_published: boolean | null
+          macros: Json | null
+          meal_type: Json | null
+          name: string
+          prep_time: number | null
+          save_count: number | null
+          tags: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          calories?: number | null
+          category?: string | null
+          cook_time?: number | null
+          created_at?: string | null
+          cuisine?: string | null
+          description?: string | null
+          difficulty?: string | null
+          english_ingredients?: Json | null
+          english_instructions?: Json | null
+          english_name?: string | null
+          id?: number
+          image_url?: string | null
+          ingredients?: Json | null
+          instructions?: Json | null
+          is_published?: boolean | null
+          macros?: Json | null
+          meal_type?: Json | null
+          name: string
+          prep_time?: number | null
+          save_count?: number | null
+          tags?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          calories?: number | null
+          category?: string | null
+          cook_time?: number | null
+          created_at?: string | null
+          cuisine?: string | null
+          description?: string | null
+          difficulty?: string | null
+          english_ingredients?: Json | null
+          english_instructions?: Json | null
+          english_name?: string | null
+          id?: number
+          image_url?: string | null
+          ingredients?: Json | null
+          instructions?: Json | null
+          is_published?: boolean | null
+          macros?: Json | null
+          meal_type?: Json | null
+          name?: string
+          prep_time?: number | null
+          save_count?: number | null
+          tags?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      saved_recipes: {
+        Row: {
+          created_at: string | null
+          id: string
+          recipe_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          recipe_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          recipe_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_recipes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          allergies: string[] | null
+          created_at: string | null
+          diet_preferences: string[] | null
+          display_name: string | null
+          flavor_preferences: string[] | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          allergies?: string[] | null
+          created_at?: string | null
+          diet_preferences?: string[] | null
+          display_name?: string | null
+          flavor_preferences?: string[] | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          allergies?: string[] | null
+          created_at?: string | null
+          diet_preferences?: string[] | null
+          display_name?: string | null
+          flavor_preferences?: string[] | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
