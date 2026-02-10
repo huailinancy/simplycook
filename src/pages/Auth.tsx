@@ -38,6 +38,22 @@ export default function Auth() {
     setError('');
     setIsSubmitting(true);
 
+    if (isForgotPassword) {
+      if (!email) {
+        setError('Please enter your email address');
+        setIsSubmitting(false);
+        return;
+      }
+      const { error } = await resetPassword(email);
+      if (error) {
+        setError(error);
+      } else {
+        setResetSent(true);
+      }
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!email || !password) {
       setError('Please fill in all fields');
       setIsSubmitting(false);
