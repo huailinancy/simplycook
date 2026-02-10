@@ -190,12 +190,14 @@ export default function Auth() {
               </div>
             </div>
             <CardTitle className="text-2xl font-display">
-              {isLogin ? t('auth.welcomeBack') : t('auth.createAccount')}
+              {isForgotPassword ? 'Reset Password' : isLogin ? t('auth.welcomeBack') : t('auth.createAccount')}
             </CardTitle>
             <CardDescription>
-              {isLogin
-                ? t('auth.signInAccess')
-                : t('auth.registerAccess')
+              {isForgotPassword
+                ? 'Enter your email and we\'ll send you a reset link'
+                : isLogin
+                  ? t('auth.signInAccess')
+                  : t('auth.registerAccess')
               }
             </CardDescription>
           </CardHeader>
