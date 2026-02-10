@@ -11,10 +11,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { signIn, signUp, user, loading, needsOnboarding } = useAuth();
