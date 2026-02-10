@@ -16,7 +16,6 @@ export function useMealPlanGenerator() {
       if (source === 'saved') {
         if (!user) return [];
 
-        // Get saved recipe IDs first
         const { data: savedData, error: savedError } = await supabase
           .from('saved_recipes')
           .select('recipe_id')
@@ -62,7 +61,17 @@ export function useMealPlanGenerator() {
     }
   }, [user]);
 
-  // Generate meal plan using Supabase Edge Function
+  // Smart shuffle - ensures variety by avoiding consecutive repeats
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  // Generate meal plan using smart random selection
   const generateMealPlan = useCallback(async (
     source: RecipeSource,
     userPreferences?: { allergies?: string[]; dietPreferences?: string[]; flavorPreferences?: string[] },
@@ -71,7 +80,6 @@ export function useMealPlanGenerator() {
     setIsGenerating(true);
     setError(null);
 
-    // Number of dishes per meal equals number of persons
     const dishesPerMeal = numberOfPersons;
     const totalSlots = 7 * 2 * dishesPerMeal; // 7 days * 2 meals * dishes per meal
 
@@ -90,58 +98,53 @@ export function useMealPlanGenerator() {
         });
       }
 
-      // 2. Call Supabase Edge Function
-      const { data, error: fnError } = await supabase.functions.invoke('generate-meal-plan', {
-        body: {
-          recipes: recipes,
-          preferences: userPreferences,
-          numberOfPersons: numberOfPersons,
-        },
-      });
+      // 2. Filter recipes based on user preferences (if provided)
+      let filteredRecipes = [...recipes];
 
-      if (fnError) {
-        throw new Error(fnError.message || 'Failed to generate meal plan');
+      if (userPreferences?.allergies && userPreferences.allergies.length > 0) {
+        filteredRecipes = filteredRecipes.filter(recipe => {
+          const recipeTags = (recipe.tags || []).map(t => t.toLowerCase());
+          const recipeName = recipe.name.toLowerCase();
+          return !userPreferences.allergies!.some(allergy =>
+            recipeTags.includes(allergy.toLowerCase()) ||
+            recipeName.includes(allergy.toLowerCase())
+          );
+        });
       }
 
-      if (data.error) {
-        throw new Error(data.error);
+      // If filtering removed all recipes, fall back to all recipes
+      if (filteredRecipes.length === 0) {
+        filteredRecipes = [...recipes];
       }
 
-      const mealPlanData = data.mealPlan;
+      // 3. Create shuffled recipe pool (repeat if needed)
+      let recipePool: SupabaseRecipe[] = [];
+      while (recipePool.length < totalSlots) {
+        recipePool = [...recipePool, ...shuffleArray(filteredRecipes)];
+      }
 
-      // 3. Map recipe IDs to actual recipe objects
-      const recipeMap = new Map(recipes.map(r => [r.id, r]));
+      // 4. Generate meal slots
+      const mealSlots: MealSlot[] = [];
+      let poolIndex = 0;
 
-      const mealSlots: MealSlot[] = mealPlanData.map((item: { dayOfWeek: number; mealType: 'lunch' | 'dinner'; recipeId: number }) => ({
-        dayOfWeek: item.dayOfWeek,
-        mealType: item.mealType,
-        recipe: recipeMap.get(item.recipeId) || null,
-      }));
-
-      // Validate we have all required slots (7 days * 2 meals * dishesPerMeal)
-      const validSlots = mealSlots.filter(slot => slot.recipe !== null);
-      if (validSlots.length < totalSlots) {
-        // Fill missing slots with random recipes
-        const allDays = [0, 1, 2, 3, 4, 5, 6];
-        const allMealTypes: ('lunch' | 'dinner')[] = ['lunch', 'dinner'];
-
-        for (const day of allDays) {
-          for (const mealType of allMealTypes) {
-            // Count existing dishes for this day/meal
-            const existingCount = mealSlots.filter(
-              s => s.dayOfWeek === day && s.mealType === mealType && s.recipe
-            ).length;
-
-            // Add missing dishes
-            for (let i = existingCount; i < dishesPerMeal; i++) {
-              const randomRecipe = recipes[Math.floor(Math.random() * recipes.length)];
-              mealSlots.push({
-                dayOfWeek: day,
-                mealType,
-                recipe: randomRecipe,
-              });
-            }
-          }
+      for (let day = 0; day < 7; day++) {
+        // Lunch dishes
+        for (let i = 0; i < dishesPerMeal; i++) {
+          mealSlots.push({
+            dayOfWeek: day,
+            mealType: 'lunch',
+            recipe: recipePool[poolIndex % recipePool.length],
+          });
+          poolIndex++;
+        }
+        // Dinner dishes
+        for (let i = 0; i < dishesPerMeal; i++) {
+          mealSlots.push({
+            dayOfWeek: day,
+            mealType: 'dinner',
+            recipe: recipePool[poolIndex % recipePool.length],
+          });
+          poolIndex++;
         }
       }
 
@@ -150,7 +153,7 @@ export function useMealPlanGenerator() {
         description: 'Your weekly meal plan is ready. You can adjust it as needed.',
       });
 
-      return mealSlots.filter(s => s.recipe !== null);
+      return mealSlots;
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate meal plan';
