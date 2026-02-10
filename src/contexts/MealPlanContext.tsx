@@ -292,7 +292,8 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       if (mealPlanId) {
-        await supabase.from('meal_plans').update({ is_finalized: false, updated_at: new Date().toISOString() }).eq('id', mealPlanId);
+        const mealSlotsJson = { isFinalized: false, slots: [] };
+        await supabase.from('meal_plans').update({ meal_slots: mealSlotsJson as any, updated_at: new Date().toISOString() }).eq('id', mealPlanId);
       }
       setMealSlots([]);
       setIsFinalized(false);
