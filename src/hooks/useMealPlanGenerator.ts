@@ -46,15 +46,18 @@ export function useMealPlanGenerator() {
         return data as SupabaseRecipe[];
       }
       else {
-        // 'all' - fetch only system recipes (user_id is null)
+        // 'all' - fetch all recipes, filter client-side
         const { data, error } = await supabase
           .from('recipes')
-          .select('*')
-          .is('user_id', null);
+          .select('*');
 
         if (error) throw error;
-        // Client-side backup filter to ensure no private recipes
-        return (data as SupabaseRecipe[]).filter(r => !r.user_id);
+        // Only show system recipes (user_id is null/undefined/empty)
+        return (data as SupabaseRecipe[]).filter(r =>
+          r.user_id === null ||
+          r.user_id === undefined ||
+          r.user_id === ''
+        );
       }
     } catch (err) {
       console.error('Error fetching recipes:', err);

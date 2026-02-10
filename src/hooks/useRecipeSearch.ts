@@ -24,13 +24,10 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
     setIsLoading(true);
 
     try {
-      // Build Supabase query
+      // Build Supabase query - fetch all, filter client-side
       let query = supabase
         .from('recipes')
         .select('*', { count: 'exact' });
-
-      // Only show public recipes: system recipes (user_id is null) OR published user recipes
-      query = query.is('user_id', null);
 
       // Search by name or description
       if (filters.query) {
@@ -73,8 +70,14 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
 
       let fetchedRecipes = data as SupabaseRecipe[];
 
-      // IMPORTANT: Filter out private recipes (client-side backup)
-      fetchedRecipes = fetchedRecipes.filter(recipe => !recipe.user_id);
+      // IMPORTANT: Only show system recipes (user_id is null/undefined/empty)
+      fetchedRecipes = fetchedRecipes.filter(recipe =>
+        recipe.user_id === null ||
+        recipe.user_id === undefined ||
+        recipe.user_id === ''
+      );
+
+      console.log('Filtered recipes count:', fetchedRecipes.length);
 
       // Apply client-side time filtering for accuracy
       if (filters.time) {
