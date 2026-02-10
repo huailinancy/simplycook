@@ -12,6 +12,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
   fetchUserProfile: () => Promise<void>;
   updateUserProfile: (profile: Partial<UserProfile>) => Promise<{ error: string | null }>;
 }
