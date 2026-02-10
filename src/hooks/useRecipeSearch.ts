@@ -70,12 +70,18 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
 
       let fetchedRecipes = data as SupabaseRecipe[];
 
+      // DEBUG: Log all recipes with their user_id
+      console.log('All recipes before filter:', fetchedRecipes.length);
+      console.log('Recipe user_ids:', fetchedRecipes.map(r => ({ id: r.id, name: r.name, user_id: r.user_id })));
+
       // IMPORTANT: Only show system recipes (user_id is null/undefined/empty)
-      fetchedRecipes = fetchedRecipes.filter(recipe =>
-        recipe.user_id === null ||
-        recipe.user_id === undefined ||
-        recipe.user_id === ''
-      );
+      fetchedRecipes = fetchedRecipes.filter(recipe => {
+        const hasUserId = recipe.user_id !== null && recipe.user_id !== undefined && recipe.user_id !== '';
+        if (hasUserId) {
+          console.log('Filtering out private recipe:', recipe.name, 'user_id:', recipe.user_id);
+        }
+        return !hasUserId;
+      });
 
       console.log('Filtered recipes count:', fetchedRecipes.length);
 
