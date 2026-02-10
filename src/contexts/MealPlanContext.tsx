@@ -349,9 +349,6 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
       for (const ingredient of ingredients) {
         if (!ingredient.name) continue;
 
-        const key = ingredient.name.toLowerCase().trim();
-        const existing = ingredientMap.get(key);
-
         let qty: number;
         let unit: string;
 
