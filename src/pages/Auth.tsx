@@ -19,7 +19,7 @@ export default function Auth() {
   const [resetSent, setResetSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn, signUp, user, loading, needsOnboarding } = useAuth();
+  const { signIn, signUp, resetPassword, user, loading, needsOnboarding } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
 
