@@ -46,12 +46,11 @@ export function useMealPlanGenerator() {
         return data as SupabaseRecipe[];
       }
       else {
-        // 'all' - fetch all available recipes (system + published)
-        // System recipes have user_id = null, user recipes must have is_published = true
+        // 'all' - fetch only system recipes (user_id is null)
         const { data, error } = await supabase
           .from('recipes')
           .select('*')
-          .or('user_id.is.null,and(user_id.not.is.null,is_published.eq.true)');
+          .is('user_id', null);
 
         if (error) throw error;
         return data as SupabaseRecipe[];

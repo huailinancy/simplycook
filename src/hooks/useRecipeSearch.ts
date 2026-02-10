@@ -30,8 +30,7 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
         .select('*', { count: 'exact' });
 
       // Only show public recipes: system recipes (user_id is null) OR published user recipes
-      // System recipes have user_id = null, user recipes must have is_published = true
-      query = query.or('user_id.is.null,and(user_id.not.is.null,is_published.eq.true)');
+      query = query.is('user_id', null);
 
       // Search by name or description
       if (filters.query) {
