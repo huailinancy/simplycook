@@ -11,13 +11,15 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn, signUp, user, loading, needsOnboarding } = useAuth();
+  const { signIn, signUp, resetPassword, user, loading, needsOnboarding } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
 
@@ -35,6 +37,22 @@ export default function Auth() {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
+
+    if (isForgotPassword) {
+      if (!email) {
+        setError('Please enter your email address');
+        setIsSubmitting(false);
+        return;
+      }
+      const { error } = await resetPassword(email);
+      if (error) {
+        setError(error);
+      } else {
+        setResetSent(true);
+      }
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!email || !password) {
       setError('Please fill in all fields');
@@ -73,6 +91,46 @@ export default function Auth() {
     );
   }
 
+  // Show success message after password reset
+  if (resetSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <Mail className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-display">Check Your Email</CardTitle>
+            <CardDescription className="text-base">
+              We've sent a password reset link to <strong>{email}</strong>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Didn't receive the email? Check your spam folder or{' '}
+              <button
+                type="button"
+                onClick={() => { setResetSent(false); setIsForgotPassword(true); }}
+                className="text-primary hover:underline font-medium"
+              >
+                try again
+              </button>
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => { setResetSent(false); setIsForgotPassword(false); setIsLogin(true); }}
+            >
+              Back to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Show success message after signup
   if (signupSuccess) {
     return (
@@ -80,8 +138,8 @@ export default function Auth() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <CheckCircle2 className="h-8 w-8 text-green-600" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <CheckCircle2 className="h-8 w-8 text-primary" />
               </div>
             </div>
             <CardTitle className="text-2xl font-display">
@@ -92,42 +150,24 @@ export default function Auth() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertTitle className="text-green-800">Next steps:</AlertTitle>
-              <AlertDescription className="text-green-700">
-                <ol className="list-decimal list-inside mt-2 space-y-1">
-                  <li>Check your email inbox</li>
-                  <li>Click the confirmation link</li>
-                  <li>Set up your food preferences</li>
-                  <li>Start discovering recipes!</li>
-                </ol>
-              </AlertDescription>
-            </Alert>
-
+            <p className="text-sm text-muted-foreground text-center">
+              Check your email inbox and click the confirmation link to get started.
+            </p>
             <p className="text-sm text-muted-foreground text-center">
               Didn't receive the email? Check your spam folder or{' '}
               <button
                 type="button"
-                onClick={() => {
-                  setSignupSuccess(false);
-                  setEmail('');
-                  setPassword('');
-                }}
+                onClick={() => { setSignupSuccess(false); setEmail(''); setPassword(''); }}
                 className="text-primary hover:underline font-medium"
               >
                 try again
               </button>
             </p>
-
             <div className="pt-4 border-t">
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => {
-                  setSignupSuccess(false);
-                  setIsLogin(true);
-                }}
+                onClick={() => { setSignupSuccess(false); setIsLogin(true); }}
               >
                 Back to Sign In
               </Button>
@@ -150,12 +190,14 @@ export default function Auth() {
               </div>
             </div>
             <CardTitle className="text-2xl font-display">
-              {isLogin ? t('auth.welcomeBack') : t('auth.createAccount')}
+              {isForgotPassword ? 'Reset Password' : isLogin ? t('auth.welcomeBack') : t('auth.createAccount')}
             </CardTitle>
             <CardDescription>
-              {isLogin
-                ? t('auth.signInAccess')
-                : t('auth.registerAccess')
+              {isForgotPassword
+                ? 'Enter your email and we\'ll send you a reset link'
+                : isLogin
+                  ? t('auth.signInAccess')
+                  : t('auth.registerAccess')
               }
             </CardDescription>
           </CardHeader>
@@ -184,21 +226,35 @@ export default function Auth() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">{t('auth.password')}</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
-                    disabled={isSubmitting}
-                  />
+              {!isForgotPassword && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">{t('auth.password')}</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10"
+                      disabled={isSubmitting}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {isLogin && !isForgotPassword && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => { setIsForgotPassword(true); setError(''); }}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
 
               <Button
                 type="submit"
@@ -207,25 +263,36 @@ export default function Auth() {
               >
                 {isSubmitting
                   ? 'Please wait...'
-                  : isLogin ? t('auth.signIn') : t('auth.createAccount')
+                  : isForgotPassword
+                    ? 'Send Reset Link'
+                    : isLogin ? t('auth.signIn') : t('auth.createAccount')
                 }
               </Button>
             </form>
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">
-                {isLogin ? t('auth.noAccount') + ' ' : t('auth.haveAccount') + ' '}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError('');
-                }}
-                className="text-primary hover:underline font-medium"
-              >
-                {isLogin ? t('auth.signUp') : t('auth.signIn').toLowerCase()}
-              </button>
+              {isForgotPassword ? (
+                <button
+                  type="button"
+                  onClick={() => { setIsForgotPassword(false); setError(''); }}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Back to Sign In
+                </button>
+              ) : (
+                <>
+                  <span className="text-muted-foreground">
+                    {isLogin ? t('auth.noAccount') + ' ' : t('auth.haveAccount') + ' '}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {isLogin ? t('auth.signUp') : t('auth.signIn').toLowerCase()}
+                  </button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
