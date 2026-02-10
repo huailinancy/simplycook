@@ -20,6 +20,7 @@ import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
+// App root component
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <LanguageProvider>
