@@ -656,7 +656,7 @@ export const tagTranslations: Record<string, string> = {
   '宫保': 'Kung Pao',
   '麻婆': 'Mapo',
   '回锅': 'Twice-cooked',
-  '水煮': 'Boiled in Chili Oil',
+  '水煮鱼': 'Boiled in Chili Oil',
   '干煸': 'Dry-fried',
   '蒜蓉': 'Garlic Sauce',
   '豉汁': 'Black Bean Sauce',
