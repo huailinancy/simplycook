@@ -6,6 +6,65 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { MealSlot, SupabaseRecipe, GroceryItem, getLocalizedRecipe } from '@/types/recipe';
 import { format, addDays } from 'date-fns';
 
+// Chinese to English ingredient translations
+const INGREDIENT_TRANSLATIONS: Record<string, string> = {
+  // Proteins
+  '鸡': 'Chicken', '鸡肉': 'Chicken', '鸡胸': 'Chicken Breast', '鸡腿': 'Chicken Leg', '鸡翅': 'Chicken Wings',
+  '牛肉': 'Beef', '牛': 'Beef', '肥牛': 'Beef Slices', '牛腩': 'Beef Brisket',
+  '猪肉': 'Pork', '猪': 'Pork', '五花肉': 'Pork Belly', '排骨': 'Pork Ribs', '猪肉末': 'Ground Pork',
+  '羊肉': 'Lamb', '羊': 'Lamb', '羊排': 'Lamb Chops',
+  '鱼': 'Fish', '虾': 'Shrimp', '虾仁': 'Shrimp', '蟹': 'Crab', '鱿鱼': 'Squid',
+  '豆腐': 'Tofu', '嫩豆腐': 'Soft Tofu', '老豆腐': 'Firm Tofu', '鸡蛋': 'Eggs', '蛋': 'Eggs',
+  // Vegetables
+  '葱': 'Scallion', '小葱': 'Scallion', '大葱': 'Green Onion', '洋葱': 'Onion',
+  '姜': 'Ginger', '生姜': 'Ginger', '蒜': 'Garlic', '大蒜': 'Garlic',
+  '辣椒': 'Chili Pepper', '青椒': 'Green Pepper', '红椒': 'Red Pepper', '干辣椒': 'Dried Chili',
+  '番茄': 'Tomato', '西红柿': 'Tomato', '土豆': 'Potato', '马铃薯': 'Potato',
+  '茄子': 'Eggplant', '黄瓜': 'Cucumber', '胡萝卜': 'Carrot', '萝卜': 'Radish', '白萝卜': 'White Radish',
+  '白菜': 'Chinese Cabbage', '大白菜': 'Napa Cabbage', '小白菜': 'Bok Choy', '娃娃菜': 'Baby Cabbage',
+  '青菜': 'Green Vegetables', '菠菜': 'Spinach', '生菜': 'Lettuce', '芹菜': 'Celery',
+  '蘑菇': 'Mushroom', '香菇': 'Shiitake Mushroom', '金针菇': 'Enoki Mushroom', '木耳': 'Wood Ear Mushroom',
+  '豆芽': 'Bean Sprouts', '韭菜': 'Chinese Chives', '香菜': 'Cilantro', '花生': 'Peanuts',
+  '玉米': 'Corn', '毛豆': 'Edamame', '四季豆': 'Green Beans', '豆角': 'String Beans',
+  '莲藕': 'Lotus Root', '藕': 'Lotus Root', '笋': 'Bamboo Shoots', '冬笋': 'Winter Bamboo Shoots',
+  '西兰花': 'Broccoli', '花菜': 'Cauliflower', '南瓜': 'Pumpkin', '冬瓜': 'Winter Melon', '丝瓜': 'Loofah',
+  // Seasonings
+  '盐': 'Salt', '糖': 'Sugar', '白糖': 'White Sugar', '冰糖': 'Rock Sugar',
+  '酱油': 'Soy Sauce', '生抽': 'Light Soy Sauce', '老抽': 'Dark Soy Sauce',
+  '醋': 'Vinegar', '米醋': 'Rice Vinegar', '香醋': 'Black Vinegar',
+  '料酒': 'Cooking Wine', '蚝油': 'Oyster Sauce', '豆瓣酱': 'Doubanjiang', '郫县豆瓣酱': 'Pixian Doubanjiang',
+  '芝麻油': 'Sesame Oil', '香油': 'Sesame Oil', '麻油': 'Sesame Oil',
+  '花椒': 'Sichuan Peppercorn', '胡椒': 'Pepper', '胡椒粉': 'Pepper Powder', '花椒粉': 'Sichuan Pepper Powder',
+  '八角': 'Star Anise', '桂皮': 'Cinnamon', '香叶': 'Bay Leaf',
+  '五香粉': 'Five Spice Powder', '十三香': 'Thirteen Spice', '孜然': 'Cumin',
+  '味精': 'MSG', '鸡精': 'Chicken Powder', '淀粉': 'Starch', '玉米淀粉': 'Cornstarch',
+  '食用油': 'Cooking Oil', '油': 'Oil', '植物油': 'Vegetable Oil',
+  // Staples
+  '米': 'Rice', '大米': 'Rice', '米饭': 'Cooked Rice', '面': 'Noodles', '面条': 'Noodles',
+  '粉': 'Rice Noodles', '米粉': 'Rice Noodles', '粉丝': 'Glass Noodles',
+  '面粉': 'Flour', '高汤': 'Stock', '鸡汤': 'Chicken Stock', '水': 'Water',
+};
+
+// Translate Chinese ingredient name to English
+function translateIngredient(name: string): string {
+  const nameLower = name.toLowerCase().trim();
+
+  // Direct match
+  if (INGREDIENT_TRANSLATIONS[name]) {
+    return INGREDIENT_TRANSLATIONS[name];
+  }
+
+  // Try to find partial match
+  for (const [chinese, english] of Object.entries(INGREDIENT_TRANSLATIONS)) {
+    if (name.includes(chinese)) {
+      return english;
+    }
+  }
+
+  // Return original if no translation found
+  return name;
+}
+
 interface MealPlanContextType {
   currentWeekStart: Date;
   mealSlots: MealSlot[];
@@ -308,11 +367,16 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
           unit = language === 'en' ? 'item' : '个';
         }
 
+        // Translate ingredient name if in English mode
+        const displayName = language === 'en' ? translateIngredient(ingredient.name) : ingredient.name;
+        const displayKey = displayName.toLowerCase().trim();
+
+        const existing = ingredientMap.get(displayKey);
         if (existing) {
           if (existing.unit === unit) existing.quantity += qty;
           else existing.quantity += 1;
         } else {
-          ingredientMap.set(key, { quantity: qty, unit, category: categorizeIngredient(ingredient.name) });
+          ingredientMap.set(displayKey, { quantity: qty, unit, category: categorizeIngredient(displayName) });
         }
       }
     }
