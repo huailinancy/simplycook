@@ -216,37 +216,29 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     try {
       const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
 
+      const mealSlotsJson = {
+        isFinalized: true,
+        slots: mealSlots.filter(slot => slot.recipe).map(slot => ({
+          dayOfWeek: slot.dayOfWeek,
+          mealType: slot.mealType,
+          recipe: slot.recipe,
+        })),
+      };
+
       const { data: planData, error: planError } = await supabase
         .from('meal_plans')
         .upsert({
           user_id: user.id,
-          week_start: weekStartStr,
-          is_finalized: true,
+          name: weekStartStr,
+          meal_slots: mealSlotsJson as any,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,week_start' })
+        }, { onConflict: 'user_id,name' })
         .select()
         .single();
 
       if (planError) throw planError;
 
-      const planId = planData.id;
-      setMealPlanId(planId);
-
-      await supabase.from('meal_plan_items').delete().eq('meal_plan_id', planId);
-
-      const items = mealSlots
-        .filter(slot => slot.recipe)
-        .map(slot => ({
-          meal_plan_id: planId,
-          recipe_id: slot.recipe!.id,
-          day_of_week: slot.dayOfWeek,
-          meal_type: slot.mealType,
-        }));
-
-      if (items.length > 0) {
-        await supabase.from('meal_plan_items').insert(items);
-      }
-
+      setMealPlanId(planData!.id);
       setIsFinalized(true);
       toast({ title: t('mealPlan.finalized'), description: t('mealPlan.finalizedDesc') });
     } catch (error: any) {
