@@ -226,21 +226,35 @@ export default function Auth() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">{t('auth.password')}</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
-                    disabled={isSubmitting}
-                  />
+              {!isForgotPassword && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">{t('auth.password')}</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10"
+                      disabled={isSubmitting}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {isLogin && !isForgotPassword && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => { setIsForgotPassword(true); setError(''); }}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
 
               <Button
                 type="submit"
@@ -249,25 +263,36 @@ export default function Auth() {
               >
                 {isSubmitting
                   ? 'Please wait...'
-                  : isLogin ? t('auth.signIn') : t('auth.createAccount')
+                  : isForgotPassword
+                    ? 'Send Reset Link'
+                    : isLogin ? t('auth.signIn') : t('auth.createAccount')
                 }
               </Button>
             </form>
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">
-                {isLogin ? t('auth.noAccount') + ' ' : t('auth.haveAccount') + ' '}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError('');
-                }}
-                className="text-primary hover:underline font-medium"
-              >
-                {isLogin ? t('auth.signUp') : t('auth.signIn').toLowerCase()}
-              </button>
+              {isForgotPassword ? (
+                <button
+                  type="button"
+                  onClick={() => { setIsForgotPassword(false); setError(''); }}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Back to Sign In
+                </button>
+              ) : (
+                <>
+                  <span className="text-muted-foreground">
+                    {isLogin ? t('auth.noAccount') + ' ' : t('auth.haveAccount') + ' '}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {isLogin ? t('auth.signUp') : t('auth.signIn').toLowerCase()}
+                  </button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
