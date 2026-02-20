@@ -178,18 +178,34 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
         })),
       };
 
-      const { data: planData, error: planError } = await supabase
-        .from('meal_plans')
-        .upsert({
-          user_id: user.id,
-          name: weekStartStr,
-          meal_slots: mealSlotsJson as any,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,name' })
-        .select()
-        .single();
-
-      if (planError) throw planError;
+      let planData;
+      if (mealPlanId) {
+        // Update existing plan
+        const { data, error } = await supabase
+          .from('meal_plans')
+          .update({
+            meal_slots: mealSlotsJson as any,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', mealPlanId)
+          .select()
+          .single();
+        if (error) throw error;
+        planData = data;
+      } else {
+        // Insert new plan
+        const { data, error } = await supabase
+          .from('meal_plans')
+          .insert({
+            user_id: user.id,
+            name: weekStartStr,
+            meal_slots: mealSlotsJson as any,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        planData = data;
+      }
 
       setMealPlanId(planData!.id);
       toast({ title: t('mealPlan.saved'), description: t('mealPlan.savedDesc') });
@@ -198,7 +214,7 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentWeekStart, mealSlots, isFinalized, toast, t]);
+  }, [user, currentWeekStart, mealSlots, isFinalized, mealPlanId, toast, t]);
 
   const finalizeMealPlan = useCallback(async () => {
     if (mealSlots.length === 0) {
@@ -225,18 +241,32 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
         })),
       };
 
-      const { data: planData, error: planError } = await supabase
-        .from('meal_plans')
-        .upsert({
-          user_id: user.id,
-          name: weekStartStr,
-          meal_slots: mealSlotsJson as any,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,name' })
-        .select()
-        .single();
-
-      if (planError) throw planError;
+      let planData;
+      if (mealPlanId) {
+        const { data, error } = await supabase
+          .from('meal_plans')
+          .update({
+            meal_slots: mealSlotsJson as any,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', mealPlanId)
+          .select()
+          .single();
+        if (error) throw error;
+        planData = data;
+      } else {
+        const { data, error } = await supabase
+          .from('meal_plans')
+          .insert({
+            user_id: user.id,
+            name: weekStartStr,
+            meal_slots: mealSlotsJson as any,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        planData = data;
+      }
 
       setMealPlanId(planData!.id);
       setIsFinalized(true);
@@ -246,7 +276,7 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentWeekStart, mealSlots, toast, t]);
+  }, [user, currentWeekStart, mealSlots, mealPlanId, toast, t]);
 
   const addDishToMeal = useCallback((dayOfWeek: number, mealType: 'lunch' | 'dinner', recipe: SupabaseRecipe) => {
     setMealSlots(prev => [...prev, { dayOfWeek, mealType, recipe }]);
