@@ -5,8 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2, Save, Loader2, Wand2 } from 'lucide-react';
 import { CUISINE_TYPES, MEAL_TYPES, SupabaseRecipe } from '@/types/recipe';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Ingredient {
   name: string;
@@ -49,6 +50,9 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
   const [tags, setTags] = useState('');
   const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: '', amount: '' }]);
   const [instructions, setInstructions] = useState<string[]>(['']);
+  const [urlInput, setUrlInput] = useState('');
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
+  const [autoFillError, setAutoFillError] = useState('');
 
   // Populate form with initial data when editing
   useEffect(() => {
@@ -108,6 +112,40 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
     setInstructions(updated);
   };
 
+  const handleAutoFill = async () => {
+    const url = urlInput.trim();
+    if (!url) return;
+    setIsAutoFilling(true);
+    setAutoFillError('');
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-recipe', {
+        body: { url },
+      });
+      if (error) throw new Error(error.message);
+      const r = data?.recipe;
+      if (!r) throw new Error('No recipe data returned');
+
+      if (r.name) setName(r.name);
+      if (r.description) setDescription(r.description);
+      if (r.cuisine && CUISINE_TYPES.includes(r.cuisine)) setCuisine(r.cuisine);
+      if (r.meal_type) setMealType([r.meal_type]);
+      if (r.prep_time != null) setPrepTime(String(r.prep_time));
+      if (r.cook_time != null) setCookTime(String(r.cook_time));
+      if (r.difficulty) setDifficulty(r.difficulty);
+      if (r.calories != null) setCalories(String(r.calories));
+      if (r.image_url) setImageUrl(r.image_url);
+      if (Array.isArray(r.tags) && r.tags.length) setTags(r.tags.join(', '));
+      if (Array.isArray(r.ingredients) && r.ingredients.length)
+        setIngredients(r.ingredients.map((i: any) => ({ name: String(i.name ?? ''), amount: String(i.amount ?? '') })));
+      if (Array.isArray(r.instructions) && r.instructions.length)
+        setInstructions(r.instructions.map((s: any) => String(s)));
+    } catch (err: any) {
+      setAutoFillError(err?.message ?? 'Failed to extract recipe from URL');
+    } finally {
+      setIsAutoFilling(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -142,6 +180,39 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* URL Auto-fill */}
+          <div className="space-y-2 rounded-lg border border-dashed p-4 bg-muted/30">
+            <Label className="text-sm font-medium">Auto-fill from URL</Label>
+            <p className="text-xs text-muted-foreground">
+              Paste a recipe page URL (e.g. Xiaohongshu, food blogs) and we'll extract the details automatically.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={urlInput}
+                onChange={e => setUrlInput(e.target.value)}
+                placeholder="https://..."
+                className="flex-1 text-sm"
+                disabled={isAutoFilling}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleAutoFill}
+                disabled={!urlInput.trim() || isAutoFilling}
+              >
+                {isAutoFilling ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4" />
+                )}
+                <span className="ml-1">{isAutoFilling ? 'Extracting…' : 'Auto-fill'}</span>
+              </Button>
+            </div>
+            {autoFillError && (
+              <p className="text-xs text-destructive">{autoFillError}</p>
+            )}
+          </div>
+
           {/* Basic Info */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
