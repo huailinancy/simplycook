@@ -31,18 +31,18 @@ export default function Index() {
 
         <div className="container relative h-full flex items-center px-4">
           <div className="flex-1 flex items-center justify-between gap-8">
-            <div className={`max-w-2xl space-y-4 md:space-y-6 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-              <div className="inline-flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 rounded-full bg-primary/10 text-primary">
-                <ChefHat className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-sm md:text-lg font-medium">{t('home.recipeCompanion')}</span>
+            <div className={`max-w-2xl space-y-3 md:space-y-4 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-primary/10 text-primary">
+                <ChefHat className="h-4 w-4" />
+                <span className="text-xs md:text-sm font-medium">{t('home.recipeCompanion')}</span>
               </div>
 
-              <h1 className="font-display text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-bold text-foreground leading-tight">
+              <h1 className="font-display text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
                 {t('home.heroTitle1')} <span className="text-primary">{t('home.heroTitle2')}</span>,<br />
                 {t('home.heroTitle3')}
               </h1>
 
-              <p className="text-base md:text-xl text-muted-foreground max-w-lg">
+              <p className="text-sm md:text-base text-muted-foreground max-w-lg">
                 {t('home.heroDesc')}
               </p>
 
