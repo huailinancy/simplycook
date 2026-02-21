@@ -140,18 +140,16 @@ function DraggableRecipeCard({
     <div
       ref={setRef}
       {...attributes}
+      {...(isFinalized ? {} : listeners)}
       className={cn(
-        "group relative bg-muted rounded-lg p-2 text-xs",
+        "group relative bg-muted rounded-lg p-2 text-xs touch-none",
+        !isFinalized && "cursor-grab active:cursor-grabbing",
         isDragging && "opacity-30",
         isOver && "ring-2 ring-primary",
       )}
     >
-      {/* Drag handle – only this element carries the dnd-kit listeners */}
       {!isFinalized && (
-        <div
-          {...listeners}
-          className="absolute top-1 left-1 z-10 p-0.5 rounded cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-60 transition-opacity"
-        >
+        <div className="absolute top-1 left-1 z-10 p-0.5 rounded opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
           <GripVertical className="h-3 w-3 text-muted-foreground" />
         </div>
       )}

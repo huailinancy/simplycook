@@ -106,7 +106,7 @@ export default function MealPlanChatBox() {
             <div className="px-3 pb-2 flex flex-wrap gap-1.5">
               {[
                 '4 days Chinese, 3 days Italian',
-                'What's on Monday?',
+                "What's on Monday?",
                 'Total calories this week?',
               ].map(chip => (
                 <button
