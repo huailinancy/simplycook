@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { ArrowRight, ChefHat } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Layout } from '@/components/layout/Layout';
+import { Header } from '@/components/layout/Header';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { QRCodeDisplay } from '@/components/QRCodeDisplay';
 import heroImage from '@/assets/hero-cooking.jpg';
@@ -16,9 +17,9 @@ export default function Index() {
   }, []);
 
   return (
-    <Layout>
-      {/* Hero Section */}
-      <section className="relative overflow-hidden min-h-[calc(100vh-4rem)]">
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
+      <Header />
+      <section className="relative flex-1 overflow-hidden">
         <div className="absolute inset-0">
           <img
             src={heroImage}
@@ -28,7 +29,7 @@ export default function Index() {
           <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-background/40" />
         </div>
 
-        <div className="container relative py-16 px-4 md:py-32 lg:py-40">
+        <div className="container relative h-full flex items-center px-4">
           <div className={`max-w-2xl space-y-4 md:space-y-6 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             <div className="inline-flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 rounded-full bg-primary/10 text-primary">
               <ChefHat className="h-4 w-4 md:h-5 md:w-5" />
@@ -59,12 +60,13 @@ export default function Index() {
             </div>
 
             {/* QR Code - visible only on desktop */}
-            <div className="hidden md:block mt-8">
+            <div className="hidden md:block">
               <QRCodeDisplay />
             </div>
           </div>
         </div>
       </section>
-    </Layout>
+      <MobileBottomNav />
+    </div>
   );
 }
