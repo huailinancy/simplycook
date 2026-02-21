@@ -19,12 +19,24 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch recipes without images
-    const { data: recipes, error } = await supabase
-      .from("recipes")
-      .select("id, name, english_name")
-      .or("image_url.is.null,image_url.eq.")
-      .order("id");
+    // Parse request body for mode and limit
+    let mode = "missing";
+    let limit = 5;
+    try {
+      const body = await req.json();
+      mode = body?.mode || "missing";
+      limit = body?.limit || 5;
+    } catch { /* default */ }
+
+    let query = supabase.from("recipes").select("id, name, english_name, image_url");
+
+    if (mode === "wikimedia") {
+      query = query.or("image_url.ilike.%wikimedia%,image_url.ilike.%wikipedia%");
+    } else {
+      query = query.or("image_url.is.null,image_url.eq.");
+    }
+
+    const { data: recipes, error } = await query.order("id").limit(limit);
 
     if (error) throw error;
     if (!recipes || recipes.length === 0) {
