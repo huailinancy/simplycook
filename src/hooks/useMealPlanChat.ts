@@ -2,12 +2,47 @@ import { useState, useCallback, useEffect } from 'react';
 import { format, addDays } from 'date-fns';
 import { useMealPlan } from '@/contexts/MealPlanContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getLocalizedRecipe, SupabaseRecipe } from '@/types/recipe';
+import { getLocalizedRecipe, SupabaseRecipe, MealSlot } from '@/types/recipe';
 import { supabase } from '@/integrations/supabase/client';
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// Cuisines that count as "Chinese" for matching purposes
+const CHINESE_VARIANTS = new Set([
+  '川菜', '粤菜', '湘菜', '鲁菜', '苏菜', '浙菜', '闽菜', '徽菜',
+  '东北菜', '西北菜', '云南菜', '贵州菜', '家常菜', '凉菜', '热菜',
+  'chinese', 'sichuan', 'cantonese', 'home-style',
+]);
+
+/** Return true if a recipe's cuisine matches the LLM-requested cuisine */
+function cuisineMatches(recipeCuisine: string | null | undefined, requested: string): boolean {
+  if (!recipeCuisine) return false;
+  const rc = recipeCuisine.toLowerCase().trim();
+  const req = requested.toLowerCase().trim();
+  if (rc === req) return true;
+  // Group all Chinese-family cuisines under "chinese"
+  if (req === 'chinese' && CHINESE_VARIANTS.has(rc)) return true;
+  if (CHINESE_VARIANTS.has(req) && CHINESE_VARIANTS.has(rc)) return true;
+  // Substring match as fallback (e.g. "Italian" ↔ "italian")
+  return rc.includes(req) || req.includes(rc);
+}
+
+/** Pick a random recipe matching the requested cuisine, preferring unused ones */
+function pickRecipe(
+  cuisine: string,
+  pool: SupabaseRecipe[],
+  usedIds: Set<number>
+): SupabaseRecipe | null {
+  const matching = pool.filter(r => cuisineMatches(r.cuisine, cuisine));
+  if (matching.length === 0) return null;
+  const unused = matching.filter(r => !usedIds.has(r.id));
+  const candidates = unused.length > 0 ? unused : matching;
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  usedIds.add(picked.id);
+  return picked;
+}
 
 const WELCOME: ChatMessage = {
   role: 'assistant',
@@ -24,7 +59,7 @@ export function useMealPlanChat() {
   const { mealSlots, currentWeekStart, setMealSlots } = useMealPlan();
   const { language } = useLanguage();
 
-  // Fetch all recipes once on mount so the LLM can pick from them
+  // Fetch all recipes once on mount
   useEffect(() => {
     supabase
       .from('recipes')
@@ -34,7 +69,7 @@ export function useMealPlanChat() {
       });
   }, []);
 
-  /** Build a readable summary of the current meal plan for the LLM */
+  /** Readable summary of the current plan for the LLM */
   const buildCurrentPlanText = useCallback((): string => {
     const lines: string[] = [];
     for (let day = 0; day < 7; day++) {
@@ -47,10 +82,8 @@ export function useMealPlanChat() {
           lines.push(`- ${label}: (empty)`);
         } else {
           slots.forEach(s => {
-            const r = s.recipe!;
-            const name = getLocalizedRecipe(r, language).name;
-            const cal = r.calories ? ` (${r.calories} cal)` : '';
-            lines.push(`- ${label}: ${name}${cal}`);
+            const name = getLocalizedRecipe(s.recipe!, language).name;
+            lines.push(`- ${label}: ${name}`);
           });
         }
       }
@@ -69,20 +102,16 @@ export function useMealPlanChat() {
         const weekStart = format(currentWeekStart, 'MMMM d');
         const weekEnd = format(addDays(currentWeekStart, 6), 'MMMM d, yyyy');
 
-        // Compact recipe list — cap at 120 to stay within token budget
-        const recipeList = availableRecipes.slice(0, 120).map(r => ({
-          id: r.id,
-          name: getLocalizedRecipe(r, language).name,
-          english_name: r.english_name,
-          cuisine: r.cuisine,
-          meal_type: r.meal_type,
-        }));
+        // Send unique cuisines so the LLM knows what's available
+        const availableCuisines = [
+          ...new Set(availableRecipes.map(r => r.cuisine).filter(Boolean)),
+        ];
 
         const { data, error } = await supabase.functions.invoke('smart-meal-chat', {
           body: {
-            messages: [...messages.slice(1), userMsg], // skip welcome
+            messages: [...messages.slice(1), userMsg], // skip welcome message
             currentPlan: buildCurrentPlanText(),
-            recipes: recipeList,
+            availableCuisines,
             weekRange: `${weekStart} – ${weekEnd}`,
           },
         });
@@ -92,24 +121,45 @@ export function useMealPlanChat() {
         const reply: string = data?.reply ?? 'Sorry, I could not get a response.';
         setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
-        // If the LLM returned a FILL_SLOTS action, apply it to the planner
+        // Handle GENERATE_BY_CUISINE action
         const action = data?.action;
-        if (action?.type === 'FILL_SLOTS' && Array.isArray(action.slots) && action.slots.length > 0) {
-          const newSlots = (action.slots as { dayOfWeek: number; mealType: string; recipeId: number }[])
-            .map(s => {
-              const recipe = availableRecipes.find(r => r.id === s.recipeId) ?? null;
-              if (!recipe) return null;
-              return {
-                dayOfWeek: s.dayOfWeek,
-                mealType: s.mealType as 'lunch' | 'dinner',
-                recipe,
-              };
-            })
-            .filter((s): s is NonNullable<typeof s> => s !== null);
+        if (
+          action?.type === 'GENERATE_BY_CUISINE' &&
+          Array.isArray(action.assignments) &&
+          action.assignments.length > 0
+        ) {
+          const usedIds = new Set<number>();
+          const newSlots: MealSlot[] = [];
+
+          for (const assignment of action.assignments as {
+            dayOfWeek: number;
+            lunch: string;
+            dinner: string;
+          }[]) {
+            const lunchRecipe = pickRecipe(assignment.lunch, availableRecipes, usedIds);
+            const dinnerRecipe = pickRecipe(assignment.dinner, availableRecipes, usedIds);
+
+            if (lunchRecipe) {
+              newSlots.push({ dayOfWeek: assignment.dayOfWeek, mealType: 'lunch', recipe: lunchRecipe });
+            }
+            if (dinnerRecipe) {
+              newSlots.push({ dayOfWeek: assignment.dayOfWeek, mealType: 'dinner', recipe: dinnerRecipe });
+            }
+          }
 
           if (newSlots.length > 0) {
             setMealSlots(newSlots);
             setPlanApplied(true);
+          } else {
+            // If no recipes matched, tell the user
+            setMessages(prev => [
+              ...prev,
+              {
+                role: 'assistant',
+                content:
+                  "I couldn't find recipes matching those cuisines in the database. Try a cuisine from the available list, or add more recipes first.",
+              },
+            ]);
           }
         }
       } catch (err: any) {

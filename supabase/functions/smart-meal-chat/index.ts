@@ -16,45 +16,44 @@ serve(async (req) => {
   try {
     if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY is not configured');
 
-    const { messages, currentPlan, recipes, weekRange } = await req.json();
-
-    // Build compact recipe catalogue for the LLM
-    const recipeLines = (recipes as any[])
-      .map((r: any) => {
-        const name = r.english_name ? `${r.name} / ${r.english_name}` : r.name;
-        const meals = Array.isArray(r.meal_type) ? r.meal_type.join(',') : (r.meal_type || 'lunch,dinner');
-        return `[${r.id}] ${name} | ${r.cuisine || 'Other'} | ${meals}`;
-      })
-      .join('\n');
+    const { messages, currentPlan, availableCuisines, weekRange } = await req.json();
 
     const systemPrompt = `You are a smart meal planning assistant for SimplyCook.
-You can both answer questions about the current meal plan AND generate new meal plans based on the user's request.
+You can answer questions about the current meal plan AND generate new weekly meal plans.
 
-IMPORTANT: You MUST always respond with ONLY valid JSON — no markdown, no explanation outside the JSON.
+ALWAYS respond with ONLY valid JSON — no markdown, no text outside the JSON.
 
-Use this format for Q&A (when no plan change is needed):
-{"reply": "your answer", "action": null}
+───────────────────────────────────────────────
+FORMAT A — answering a question (no plan change):
+{"reply": "your answer here", "action": null}
 
-Use this format when generating or modifying the meal plan:
-{"reply": "friendly confirmation summarising what you planned", "action": {"type": "FILL_SLOTS", "slots": [{"dayOfWeek": 0, "mealType": "lunch", "recipeId": 123}, ...]}}
+FORMAT B — generating or changing the meal plan:
+{"reply": "friendly summary of what you planned", "action": {"type": "GENERATE_BY_CUISINE", "assignments": [
+  {"dayOfWeek": 0, "lunch": "<cuisine>", "dinner": "<cuisine>"},
+  {"dayOfWeek": 1, "lunch": "<cuisine>", "dinner": "<cuisine>"},
+  {"dayOfWeek": 2, "lunch": "<cuisine>", "dinner": "<cuisine>"},
+  {"dayOfWeek": 3, "lunch": "<cuisine>", "dinner": "<cuisine>"},
+  {"dayOfWeek": 4, "lunch": "<cuisine>", "dinner": "<cuisine>"},
+  {"dayOfWeek": 5, "lunch": "<cuisine>", "dinner": "<cuisine>"},
+  {"dayOfWeek": 6, "lunch": "<cuisine>", "dinner": "<cuisine>"}
+]}}
+───────────────────────────────────────────────
 
-Slot assignment rules:
+Rules for FORMAT B:
 - dayOfWeek: 0=Monday 1=Tuesday 2=Wednesday 3=Thursday 4=Friday 5=Saturday 6=Sunday
-- mealType: "lunch" or "dinner"
-- Generate exactly 14 slots (one lunch + one dinner for every day of the week)
-- Only use recipeIds that appear in the Available Recipes list below
-- Honour the user's cuisine/diet/category requests strictly
-- If the user says "X days [Cuisine A] and Y days [Cuisine B]", assign Cuisine A to days 0..X-1 and Cuisine B to days X..X+Y-1
-- Avoid repeating the same recipe more than twice per week
-- If a requested cuisine has too few recipes, pick the closest alternatives and mention it in the reply
+- You MUST include all 7 days (dayOfWeek 0 through 6) in the assignments array
+- Use ONLY cuisine names from the Available Cuisines list below
+- "X days [Cuisine A] and Y days [Cuisine B]" → assign Cuisine A to days 0..X-1, Cuisine B to days X..X+Y-1
+- If a cuisine isn't in the list, pick the closest available alternative and mention it in the reply
+- lunch and dinner can have different cuisines if the user asks
 
 Current week: ${weekRange}
 
 Current meal plan:
 ${currentPlan || '(no meals planned yet)'}
 
-Available Recipes (format: [id] name | cuisine | meal types):
-${recipeLines || '(no recipes available — tell the user to add recipes first)'}`;
+Available Cuisines in the recipe database:
+${(availableCuisines as string[]).join(', ')}`;
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -68,8 +67,8 @@ ${recipeLines || '(no recipes available — tell the user to add recipes first)'
           { role: 'system', content: systemPrompt },
           ...messages,
         ],
-        temperature: 0.4,
-        max_tokens: 1200,
+        temperature: 0.3,
+        max_tokens: 800,
         response_format: { type: 'json_object' },
       }),
     });
