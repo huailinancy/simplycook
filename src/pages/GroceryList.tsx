@@ -268,7 +268,7 @@ export default function GroceryList() {
         {/* Auto-Generate from Meal Plan */}
         <Card className="mb-6 border-primary/50 bg-primary/5">
           <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="flex-1">
                 <h3 className="font-semibold flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
@@ -289,7 +289,7 @@ export default function GroceryList() {
                   </p>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <Link to="/meal-planner">
                   <Button variant="outline" className="gap-2">
                     <Calendar className="h-4 w-4" />
@@ -368,7 +368,7 @@ export default function GroceryList() {
         {/* Add Item */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 placeholder={t('groceryList.addItem')}
                 value={newItemName}
@@ -376,20 +376,22 @@ export default function GroceryList() {
                 onKeyDown={(e) => e.key === 'Enter' && addItem()}
                 className="flex-1"
               />
-              <Select value={newItemCategory} onValueChange={setNewItemCategory}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {GROCERY_CATEGORIES.map(cat => (
-                    <SelectItem key={cat} value={cat}>{getCategoryTranslation(cat)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button onClick={addItem} className="gap-2">
-                <Plus className="h-4 w-4" />
-                {t('groceryList.add')}
-              </Button>
+              <div className="flex gap-2">
+                <Select value={newItemCategory} onValueChange={setNewItemCategory}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GROCERY_CATEGORIES.map(cat => (
+                      <SelectItem key={cat} value={cat}>{getCategoryTranslation(cat)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={addItem} className="gap-2 shrink-0">
+                  <Plus className="h-4 w-4" />
+                  {t('groceryList.add')}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
