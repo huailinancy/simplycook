@@ -3,7 +3,7 @@ import MealPlanChatBox from '@/components/chat/MealPlanChatBox';
 import { format, addDays, isSameDay, startOfDay } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, Trash2, Flame, Clock, Sparkles, Save, Check, RefreshCw, RotateCcw, Calendar, Search, GripVertical } from 'lucide-react';
-import { DndContext, DragOverlay, useDroppable, useDraggable, type DragEndEvent, type DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useDroppable, useDraggable, type DragEndEvent, type DragStartEvent, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,37 +55,25 @@ function RecipeCardContent({ recipe, language, showRemove, onRemove, recipePath 
 
   return (
     <>
+      {recipe.image_url && (
+        <img
+          src={recipe.image_url}
+          alt={nameLabel}
+          draggable={false}
+          className="w-full h-12 object-cover rounded mb-1"
+        />
+      )}
       {recipePath ? (
-        <div className="block mb-1 pointer-events-none">
-          {recipe.image_url && (
-            <img
-              src={recipe.image_url}
-              alt={nameLabel}
-              draggable={false}
-              className="w-full h-12 object-cover rounded mb-1"
-            />
-          )}
-          <Link
-            to={recipePath}
-            draggable={false}
-            onClick={(e) => e.stopPropagation()}
-            className="pointer-events-auto"
-          >
-            <p className="font-medium line-clamp-1 hover:underline">{nameLabel}</p>
-          </Link>
-        </div>
+        <Link
+          to={recipePath}
+          draggable={false}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <p className="font-medium line-clamp-1 hover:underline">{nameLabel}</p>
+        </Link>
       ) : (
-        <>
-          {recipe.image_url && (
-            <img
-              src={recipe.image_url}
-              alt={nameLabel}
-              draggable={false}
-              className="w-full h-12 object-cover rounded mb-1"
-            />
-          )}
-          <p className="font-medium line-clamp-1">{nameLabel}</p>
-        </>
+        <p className="font-medium line-clamp-1">{nameLabel}</p>
       )}
       <div className="flex items-center gap-2 text-muted-foreground mt-0.5">
         {recipe.calories && (
@@ -236,7 +224,8 @@ export default function MealPlanner() {
 
   // Require 5 px of movement before a drag starts; prevents interfering with clicks
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
