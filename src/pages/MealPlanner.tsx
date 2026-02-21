@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import MealPlanChatBox from '@/components/chat/MealPlanChatBox';
 import { format, addDays, isSameDay, startOfDay } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, Trash2, Flame, Clock, Sparkles, Save, Check, RefreshCw, RotateCcw, Calendar, Search, GripVertical } from 'lucide-react';
@@ -845,6 +846,8 @@ export default function MealPlanner() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <MealPlanChatBox />
     </Layout>
   );
 }
