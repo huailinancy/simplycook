@@ -11,10 +11,24 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 
 // All cuisine strings that count as "Chinese"
 const CHINESE_VARIANTS = new Set([
-  '川菜', '粤菜', '湘菜', '鲁菜', '苏菜', '浙菜', '闽菜', '徽菜',
+  '中式', '川菜', '粤菜', '湘菜', '鲁菜', '苏菜', '浙菜', '闽菜', '徽菜',
   '东北菜', '西北菜', '云南菜', '贵州菜', '家常菜', '凉菜', '热菜',
+  '新疆菜',
   'chinese', 'sichuan', 'cantonese', 'home-style',
 ]);
+
+/** Map common English cuisine labels to DB values */
+const CUISINE_ALIAS: Record<string, string> = {
+  'chinese': '中式',
+  'italian': '意式',
+  'western': '西式',
+  'sichuan': '川菜',
+  'hunan': '湘菜',
+  'cantonese': '粤菜',
+  'northwestern': '西北菜',
+  'xinjiang': '新疆菜',
+  'zhejiang': '浙菜',
+};
 
 /** True when a recipe's cuisine matches the LLM-requested cuisine label */
 function cuisineMatches(recipeCuisine: string | null | undefined, requested: string): boolean {
@@ -22,9 +36,12 @@ function cuisineMatches(recipeCuisine: string | null | undefined, requested: str
   if (!recipeCuisine) return false;
   const rc = recipeCuisine.toLowerCase().trim();
   const req = requested.toLowerCase().trim();
+  // Resolve English aliases to DB values
+  const resolved = CUISINE_ALIAS[req] ? CUISINE_ALIAS[req].toLowerCase() : req;
+  if (rc === resolved) return true;
   if (rc === req) return true;
-  if ((req === 'chinese' || CHINESE_VARIANTS.has(req)) && CHINESE_VARIANTS.has(rc)) return true;
-  return rc.includes(req) || req.includes(rc);
+  if ((req === 'chinese' || CHINESE_VARIANTS.has(req) || resolved === '中式') && CHINESE_VARIANTS.has(rc)) return true;
+  return rc.includes(resolved) || resolved.includes(rc) || rc.includes(req) || req.includes(rc);
 }
 
 interface GenerateAction {
