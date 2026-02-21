@@ -416,9 +416,10 @@ export default function MealPlanner() {
             {/* AI Generate Button */}
             <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
               <DialogTrigger asChild>
-                <Button className="gap-2" disabled={isGenerating || isFinalized}>
+                <Button className="gap-2 text-sm h-9" disabled={isGenerating || isFinalized}>
                   <Sparkles className="h-4 w-4" />
-                  {t('mealPlanner.aiGenerate')}
+                  <span className="hidden sm:inline">{t('mealPlanner.aiGenerate')}</span>
+                  <span className="sm:hidden">AI</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -513,38 +514,39 @@ export default function MealPlanner() {
             {isFinalized && (
               <Button
                 variant="outline"
-                className="gap-2"
+                className="gap-2 text-sm h-9"
                 onClick={handleRegenerate}
                 disabled={isLoading}
               >
                 <RotateCcw className="h-4 w-4" />
-                {t('mealPlanner.regenerate')}
+                <span className="hidden sm:inline">{t('mealPlanner.regenerate')}</span>
               </Button>
             )}
 
             <Button
               variant="outline"
-              className="gap-2"
+              className="gap-2 text-sm h-9"
               onClick={saveMealPlan}
               disabled={isLoading || mealSlots.length === 0}
             >
               <Save className="h-4 w-4" />
-              {t('mealPlanner.save')}
+              <span className="hidden sm:inline">{t('mealPlanner.save')}</span>
             </Button>
 
             <Button
               variant={isFinalized ? "secondary" : "default"}
-              className="gap-2"
+              className="gap-2 text-sm h-9"
               onClick={finalizeMealPlan}
               disabled={isLoading || mealSlots.length === 0 || isFinalized}
             >
               <Check className="h-4 w-4" />
-              {isFinalized ? t('mealPlanner.finalized') : t('mealPlanner.finalize')}
+              <span className="hidden sm:inline">{isFinalized ? t('mealPlanner.finalized') : t('mealPlanner.finalize')}</span>
             </Button>
 
             <Button
               variant="ghost"
               size="icon"
+              className="h-9 w-9"
               onClick={clearMealPlan}
               disabled={isLoading || mealSlots.length === 0}
             >
@@ -554,16 +556,17 @@ export default function MealPlanner() {
         </div>
 
         {/* Week Navigation */}
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={goToPreviousWeek}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
 
           <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2 text-sm h-9">
                 <Calendar className="h-4 w-4" />
-                {t('mealPlanner.selectStartDate')}
+                <span className="hidden sm:inline">{t('mealPlanner.selectStartDate')}</span>
+                <span className="sm:hidden">{t('mealPlanner.selectStartDate').split(' ')[0]}</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="center">
@@ -577,10 +580,10 @@ export default function MealPlanner() {
             </PopoverContent>
           </Popover>
 
-          <Button variant="outline" onClick={goToTomorrow}>
+          <Button variant="outline" onClick={goToTomorrow} className="text-sm h-9">
             {t('mealPlanner.startTomorrow')}
           </Button>
-          <Button variant="outline" size="icon" onClick={goToNextWeek}>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={goToNextWeek}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
