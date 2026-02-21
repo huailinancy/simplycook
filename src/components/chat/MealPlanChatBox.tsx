@@ -6,7 +6,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useMealPlanChat } from '@/hooks/useMealPlanChat';
 
-const hasApiKey = !!import.meta.env.VITE_GROQ_API_KEY;
 
 export default function MealPlanChatBox() {
   const [open, setOpen] = useState(false);
@@ -93,29 +92,23 @@ export default function MealPlanChatBox() {
 
           {/* Input area */}
           <div className="border-t px-3 py-3">
-            {hasApiKey ? (
-              <div className="flex gap-2">
-                <Input
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask about your meal plan…"
-                  className="flex-1 text-sm"
-                  disabled={isLoading}
-                />
-                <Button
-                  size="icon"
-                  onClick={handleSend}
-                  disabled={!input.trim() || isLoading}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground text-center">
-                Add <code className="bg-muted px-1 rounded">VITE_GROQ_API_KEY</code> to enable the assistant.
-              </p>
-            )}
+            <div className="flex gap-2">
+              <Input
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about your meal plan…"
+                className="flex-1 text-sm"
+                disabled={isLoading}
+              />
+              <Button
+                size="icon"
+                onClick={handleSend}
+                disabled={!input.trim() || isLoading}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       )}

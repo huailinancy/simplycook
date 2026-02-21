@@ -3,6 +3,7 @@ import { format, addDays } from 'date-fns';
 import { useMealPlan } from '@/contexts/MealPlanContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedRecipe } from '@/types/recipe';
+import { supabase } from '@/integrations/supabase/client';
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -67,36 +68,20 @@ export function useMealPlanChat() {
     setIsLoading(true);
 
     try {
-      const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-      if (!apiKey) throw new Error('VITE_GROQ_API_KEY is not set');
+      const apiMessages = [
+        { role: 'system', content: buildSystemPrompt() },
+        // exclude welcome message from history sent to the model
+        ...messages.slice(1),
+        userMsg,
+      ];
 
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [
-            { role: 'system', content: buildSystemPrompt() },
-            // exclude the welcome message from history sent to API
-            ...messages.slice(1),
-            userMsg,
-          ],
-          temperature: 0.7,
-          max_tokens: 512,
-        }),
+      const { data, error } = await supabase.functions.invoke('groq-chat', {
+        body: { messages: apiMessages },
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message ?? `HTTP ${res.status}`);
-      }
+      if (error) throw new Error(error.message);
 
-      const data = await res.json();
-      const reply: string =
-        data.choices?.[0]?.message?.content ?? 'Sorry, I could not get a response.';
+      const reply: string = data?.reply ?? 'Sorry, I could not get a response.';
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch (err: any) {
       setMessages(prev => [
