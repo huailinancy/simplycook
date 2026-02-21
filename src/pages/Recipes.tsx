@@ -27,6 +27,14 @@ export default function Recipes() {
     searchRecipes({ query: '' });
   }, []);
 
+  // Auto-search when filters change (except query, which uses Enter/Search button)
+  useEffect(() => {
+    const hasNonQueryFilter = filters.cuisineType || filters.mealType || filters.time;
+    if (hasNonQueryFilter !== undefined) {
+      searchRecipes(filters);
+    }
+  }, [filters.cuisineType, filters.mealType, filters.time]);
+
   const handleSearch = () => {
     searchRecipes(filters);
   };
