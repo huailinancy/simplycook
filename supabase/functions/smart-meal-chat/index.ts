@@ -31,13 +31,7 @@ RESPONSE FORMAT B — generating or changing the meal plan:
   "action": {
     "type": "GENERATE_PLAN",
     "assignments": [
-      {"dayOfWeek": 0, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
-      {"dayOfWeek": 1, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
-      {"dayOfWeek": 2, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
-      {"dayOfWeek": 3, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
-      {"dayOfWeek": 4, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
-      {"dayOfWeek": 5, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
-      {"dayOfWeek": 6, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"}
+      {"dayOfWeek": 0, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"}
     ],
     "maxCalories": <number or null>,
     "requiredTags": []
@@ -51,18 +45,26 @@ CRITICAL — use FORMAT B whenever the user:
 • mentions dietary preferences: "low-calorie", "healthy", "vegetarian", "high-protein", "light"
 • says "I want [type of] meals", "give me a [type] plan", "plan my week"
 • asks to change or redo the meal plan
+• asks to plan meals for specific days (e.g. "Monday and Tuesday", "just today", "this weekend")
 
 FORMAT B rules:
-- assignments MUST contain exactly 7 entries (dayOfWeek 0 through 6)
 - dayOfWeek: 0=Monday 1=Tuesday 2=Wednesday 3=Thursday 4=Friday 5=Saturday 6=Sunday
+- assignments MUST contain ONLY the days the user asked for:
+    • "plan my week" or "weekly plan" → include all 7 days (0–6)
+    • "plan for Monday and Tuesday" → include only dayOfWeek 0 and 1
+    • "plan for today" / "just Monday" → include only dayOfWeek 0
+    • "plan the weekend" → include only dayOfWeek 5 and 6
+    • "plan weekdays" → include dayOfWeek 0 through 4
+    • Specific days named → include only those days
 - cuisine values: use names from the Available Cuisines list, OR use "any" for no preference
-- "X days [Cuisine A] and Y days [Cuisine B]" → Cuisine A for days 0..X-1, Cuisine B for days X..X+Y-1
-- If no cuisine specified, use "any" for all days
+- "X days [Cuisine A] and Y days [Cuisine B]" → Cuisine A for the first X days in range, Cuisine B for the rest
+- If no cuisine specified, use "any" for all requested days
 - maxCalories: set a number for calorie-restricted requests:
     "low-calorie" / "light" → 450
     "medium-calorie" / "balanced" → 600
     no calorie preference → null
 - requiredTags: array of tag strings to require (e.g. ["vegetarian"]), usually []
+- Partial-day plans will MERGE with the existing plan — other days are untouched
 
 ONLY use FORMAT A for purely factual questions about the CURRENT plan
 (e.g. "What's on Monday?", "How many calories total?", "What's for dinner Thursday?").

@@ -93,7 +93,7 @@ function pickRecipe(
 const WELCOME: ChatMessage = {
   role: 'assistant',
   content:
-    'Hi! I can answer questions about your meal plan, or generate one for you.\n\nExamples:\n• "4 days Chinese cuisine and 3 days Italian"\n• "A low-calorie meal plan for the week"\n• "Vegetarian meals all week"\n• "What\'s planned for Monday?"',
+    'Hi! I can answer questions about your meal plan, or generate one for you — for the whole week or just specific days.\n\nExamples:\n• "4 days Chinese cuisine and 3 days Italian"\n• "Plan Monday and Tuesday with Italian food"\n• "A low-calorie meal plan for the week"\n• "Plan just the weekend"\n• "What\'s planned for Monday?"',
 };
 
 export function useMealPlanChat() {
@@ -138,13 +138,18 @@ export function useMealPlanChat() {
     return lines.join('\n');
   }, [mealSlots, language]);
 
-  /** Apply a GENERATE_PLAN action from the LLM to the planner */
+  /** Apply a GENERATE_PLAN action from the LLM to the planner.
+   *  Only replaces slots for days included in the action; other days are preserved. */
   const applyGeneratePlan = useCallback(
     (action: GenerateAction): boolean => {
       const maxCalories = action.maxCalories ?? null;
       const requiredTags = action.requiredTags ?? [];
       const usedIds = new Set<number>();
       const newSlots: MealSlot[] = [];
+
+      // Track which days are being replaced so we can keep the rest untouched
+      const affectedDays = new Set(action.assignments.map(a => a.dayOfWeek));
+      const keptSlots = mealSlots.filter(s => !affectedDays.has(s.dayOfWeek));
 
       for (const assignment of action.assignments) {
         const lunchRecipe = pickRecipe(assignment.lunch, availableRecipes, usedIds, maxCalories, requiredTags);
@@ -154,12 +159,12 @@ export function useMealPlanChat() {
       }
 
       if (newSlots.length > 0) {
-        setMealSlots(newSlots);
+        setMealSlots([...keptSlots, ...newSlots]);
         return true;
       }
       return false;
     },
-    [availableRecipes, setMealSlots]
+    [availableRecipes, mealSlots, setMealSlots]
   );
 
   const sendMessage = useCallback(
