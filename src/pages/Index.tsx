@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Layout } from '@/components/layout/Layout';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { QRCodeDisplay } from '@/components/QRCodeDisplay';
 import heroImage from '@/assets/hero-cooking.jpg';
 
 export default function Index() {
@@ -55,6 +56,11 @@ export default function Index() {
                   {t('home.planWeek')}
                 </Button>
               </Link>
+            </div>
+
+            {/* QR Code - visible only on desktop */}
+            <div className="hidden md:block mt-8">
+              <QRCodeDisplay />
             </div>
           </div>
         </div>
