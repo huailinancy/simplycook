@@ -56,12 +56,7 @@ function RecipeCardContent({ recipe, language, showRemove, onRemove, recipePath 
   return (
     <>
       {recipePath ? (
-        <Link
-          to={recipePath}
-          draggable={false}
-          onClick={(e) => e.stopPropagation()}
-          className="block mb-1"
-        >
+        <div className="block mb-1 pointer-events-none">
           {recipe.image_url && (
             <img
               src={recipe.image_url}
@@ -70,8 +65,15 @@ function RecipeCardContent({ recipe, language, showRemove, onRemove, recipePath 
               className="w-full h-12 object-cover rounded mb-1"
             />
           )}
-          <p className="font-medium line-clamp-1 hover:underline">{nameLabel}</p>
-        </Link>
+          <Link
+            to={recipePath}
+            draggable={false}
+            onClick={(e) => e.stopPropagation()}
+            className="pointer-events-auto"
+          >
+            <p className="font-medium line-clamp-1 hover:underline">{nameLabel}</p>
+          </Link>
+        </div>
       ) : (
         <>
           {recipe.image_url && (
@@ -141,8 +143,9 @@ function DraggableRecipeCard({
       ref={setRef}
       {...attributes}
       {...(isFinalized ? {} : listeners)}
+      draggable={false}
       className={cn(
-        "group relative bg-muted rounded-lg p-2 text-xs touch-none",
+        "group relative bg-muted rounded-lg p-2 text-xs touch-none select-none",
         !isFinalized && "cursor-grab active:cursor-grabbing",
         isDragging && "opacity-30",
         isOver && "ring-2 ring-primary",
