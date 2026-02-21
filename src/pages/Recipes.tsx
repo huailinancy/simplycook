@@ -27,13 +27,11 @@ export default function Recipes() {
     searchRecipes({ query: '' });
   }, []);
 
-  // Auto-search when filters change (except query, which uses Enter/Search button)
+  // Auto-search when any filter changes
+  const filtersKey = `${filters.cuisineType || ''}-${filters.mealType || ''}-${filters.time || ''}`;
   useEffect(() => {
-    const hasNonQueryFilter = filters.cuisineType || filters.mealType || filters.time;
-    if (hasNonQueryFilter !== undefined) {
-      searchRecipes(filters);
-    }
-  }, [filters.cuisineType, filters.mealType, filters.time]);
+    searchRecipes(filters);
+  }, [filtersKey]);
 
   const handleSearch = () => {
     searchRecipes(filters);
