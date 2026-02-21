@@ -875,6 +875,10 @@ export default function MealPlanner() {
         </Dialog>
       </div>
 
+      <p className="text-center text-xs text-muted-foreground py-3">
+        The recommended calories per meal is 400~600 calories per person.
+      </p>
+
       <MealPlanChatBox />
     </Layout>
   );
