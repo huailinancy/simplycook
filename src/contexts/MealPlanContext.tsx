@@ -83,6 +83,10 @@ interface MealPlanContextType {
   finalizeMealPlan: () => Promise<void>;
   resetMealPlan: () => Promise<void>;
   clearMealPlan: () => void;
+  swapRecipesBetweenSlots: (
+    fromDay: number, fromType: 'lunch' | 'dinner', recipeId: number,
+    toDay: number, toType: 'lunch' | 'dinner'
+  ) => void;
   generateGroceryList: () => Promise<GroceryItem[]>;
 }
 
@@ -229,6 +233,7 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(true);
+    setIsFinalized(true);
     try {
       const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
 
@@ -269,10 +274,11 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
       }
 
       setMealPlanId(planData!.id);
-      setIsFinalized(true);
       toast({ title: t('mealPlan.finalized'), description: t('mealPlan.finalizedDesc') });
     } catch (error: any) {
-      console.error('Error finalizing meal plan:', error);
+      console.error('Error saving finalized meal plan:', error);
+      // Do NOT revert isFinalized — keep the UI as "Finalized"
+      toast({ title: t('mealPlan.finalized'), description: 'Saved locally. Sync to server failed.', variant: 'default' });
     } finally {
       setIsLoading(false);
     }
@@ -309,6 +315,20 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
   const clearMealPlan = useCallback(() => {
     setMealSlots([]);
     setIsFinalized(false);
+  }, []);
+
+  const swapRecipesBetweenSlots = useCallback((
+    fromDay: number, fromType: 'lunch' | 'dinner', recipeId: number,
+    toDay: number, toType: 'lunch' | 'dinner'
+  ) => {
+    if (fromDay === toDay && fromType === toType) return;
+    setMealSlots(prev => prev.map(slot => {
+      if (slot.dayOfWeek === fromDay && slot.mealType === fromType && slot.recipe?.id === recipeId)
+        return { ...slot, dayOfWeek: toDay, mealType: toType };
+      if (slot.dayOfWeek === toDay && slot.mealType === toType)
+        return { ...slot, dayOfWeek: fromDay, mealType: fromType };
+      return slot;
+    }));
   }, []);
 
   const resetMealPlan = useCallback(async () => {
@@ -412,7 +432,7 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
       currentWeekStart, mealSlots, isFinalized, isLoading, mealPlanId,
       setCurrentWeekStart, setMealSlots, addMealSlot, addDishToMeal, removeDish,
       removeMealSlot, updateMealSlot, saveMealPlan, loadMealPlan, finalizeMealPlan,
-      resetMealPlan, clearMealPlan, generateGroceryList,
+      resetMealPlan, clearMealPlan, swapRecipesBetweenSlots, generateGroceryList,
     }}>
       {children}
     </MealPlanContext.Provider>
