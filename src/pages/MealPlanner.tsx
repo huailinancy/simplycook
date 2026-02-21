@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import MealPlanChatBox from '@/components/chat/MealPlanChatBox';
 import { format, addDays, isSameDay, startOfDay } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Flame, Clock, Sparkles, Save, Check, RefreshCw, RotateCcw, Calendar, Search, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Flame, Clock, Sparkles, Save, Check, RefreshCw, RotateCcw, Calendar, Search, GripVertical, Globe, Heart, Import } from 'lucide-react';
 import { DndContext, DragOverlay, useDroppable, useDraggable, type DragEndEvent, type DragStartEvent, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -205,7 +205,7 @@ export default function MealPlanner() {
   const { toast } = useToast();
   const { t, language } = useLanguage();
 
-  const [recipeSource, setRecipeSource] = useState<RecipeSource>('all');
+  const [sourcePriority, setSourcePriority] = useState<RecipeSource[]>(['all']);
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [showRecipePickerDialog, setShowRecipePickerDialog] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ dayOfWeek: number; mealType: 'lunch' | 'dinner' } | null>(null);
@@ -247,7 +247,7 @@ export default function MealPlanner() {
 
   const handleGenerateMealPlan = async () => {
     const slots = await generateMealPlan(
-      recipeSource,
+      sourcePriority,
       {
         allergies: userProfile?.allergies,
         dietPreferences: userProfile?.diet_preferences,
@@ -274,7 +274,7 @@ export default function MealPlanner() {
     setPickerCuisine('');
     setPickerPrepTime('');
 
-    const recipes = await fetchRecipesBySource(recipeSource);
+    const recipes = await fetchRecipesBySource(sourcePriority[0] ?? 'all');
     setAvailableRecipes(recipes);
     setRecipesLoading(false);
   };
@@ -450,16 +450,51 @@ export default function MealPlanner() {
                   {user && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">{t('mealPlanner.recipeSource')}</label>
-                      <Select value={recipeSource} onValueChange={(v) => setRecipeSource(v as RecipeSource)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('mealPlanner.recipeSource')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">{t('mealPlanner.allRecipes')}</SelectItem>
-                          <SelectItem value="saved">{t('mealPlanner.savedRecipes')}</SelectItem>
-                          <SelectItem value="my-recipes">{t('mealPlanner.myRecipes')}</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Click sources in priority order. The primary source fills the plan first; others supplement when needed.
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {([
+                          { value: 'all' as RecipeSource, label: t('mealPlanner.allRecipes'), icon: Globe },
+                          { value: 'saved' as RecipeSource, label: t('mealPlanner.savedRecipes'), icon: Heart },
+                          { value: 'my-recipes' as RecipeSource, label: t('mealPlanner.myRecipes'), icon: Import },
+                        ] as const).map(({ value, label, icon: Icon }) => {
+                          const rank = sourcePriority.indexOf(value);
+                          const selected = rank !== -1;
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => {
+                                if (selected) {
+                                  // keep at least one source selected
+                                  if (sourcePriority.length > 1)
+                                    setSourcePriority(prev => prev.filter(s => s !== value));
+                                } else {
+                                  setSourcePriority(prev => [...prev, value]);
+                                }
+                              }}
+                              className={cn(
+                                'relative flex flex-col items-center gap-1 p-3 rounded-lg border-2 text-xs transition-colors',
+                                selected
+                                  ? 'border-primary bg-primary/5 text-primary'
+                                  : 'border-border hover:border-primary/40 text-muted-foreground'
+                              )}
+                            >
+                              {selected && (
+                                <span className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                                  {rank + 1}
+                                </span>
+                              )}
+                              <Icon className="h-4 w-4" />
+                              <span className="font-medium text-center leading-tight">{label}</span>
+                              {selected && rank === 0 && (
+                                <span className="text-[10px] text-primary/70">Primary</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 

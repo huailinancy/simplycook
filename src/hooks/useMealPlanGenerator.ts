@@ -75,9 +75,11 @@ export function useMealPlanGenerator() {
     return shuffled;
   };
 
-  // Generate meal plan using smart random selection
+  // Generate meal plan with prioritised sources
+  // sources[0] is primary — slots are filled from it first.
+  // sources[1..] supplement only when primary doesn't have enough unique recipes.
   const generateMealPlan = useCallback(async (
-    source: RecipeSource,
+    sources: RecipeSource[],
     userPreferences?: { allergies?: string[]; dietPreferences?: string[]; flavorPreferences?: string[] },
     numberOfPersons: number = 2
   ): Promise<MealSlot[]> => {
@@ -85,76 +87,88 @@ export function useMealPlanGenerator() {
     setError(null);
 
     const dishesPerMeal = numberOfPersons;
-    const totalSlots = 7 * 2 * dishesPerMeal; // 7 days * 2 meals * dishes per meal
+    const totalSlots = 7 * 2 * dishesPerMeal;
 
     try {
-      // 1. Fetch available recipes
-      const recipes = await fetchRecipesBySource(source);
+      // 1. Fetch primary source
+      const primarySource = sources[0] ?? 'all';
+      const primaryRecipes = await fetchRecipesBySource(primarySource);
 
-      if (recipes.length === 0) {
-        throw new Error(`No recipes found in ${source === 'all' ? 'the repository' : source === 'saved' ? 'your saved recipes' : 'your recipes'}. Please add some recipes first.`);
+      // 2. Fetch supplementary sources (deduplicated against primary)
+      const seenIds = new Set(primaryRecipes.map(r => r.id));
+      let supplementRecipes: SupabaseRecipe[] = [];
+      for (let i = 1; i < sources.length; i++) {
+        const extras = await fetchRecipesBySource(sources[i]);
+        for (const r of extras) {
+          if (!seenIds.has(r.id)) {
+            seenIds.add(r.id);
+            supplementRecipes.push(r);
+          }
+        }
       }
 
-      if (recipes.length < totalSlots) {
-        toast({
-          title: 'Limited recipes',
-          description: `Only ${recipes.length} recipes available. Some meals may be repeated.`,
-        });
+      if (primaryRecipes.length === 0 && supplementRecipes.length === 0) {
+        const label = primarySource === 'all' ? 'the repository'
+          : primarySource === 'saved' ? 'your saved recipes' : 'your recipes';
+        throw new Error(`No recipes found in ${label}. Please add some recipes first.`);
       }
 
-      // 2. Filter recipes based on user preferences (if provided)
-      let filteredRecipes = [...recipes];
-
-      if (userPreferences?.allergies && userPreferences.allergies.length > 0) {
-        filteredRecipes = filteredRecipes.filter(recipe => {
-          const recipeTags = (recipe.tags || []).map(t => t.toLowerCase());
-          const recipeName = recipe.name.toLowerCase();
-          return !userPreferences.allergies!.some(allergy =>
-            recipeTags.includes(allergy.toLowerCase()) ||
-            recipeName.includes(allergy.toLowerCase())
+      // 3. Apply preference filtering (allergies) — fall back if filtering empties the pool
+      const applyFilters = (list: SupabaseRecipe[]) => {
+        if (!userPreferences?.allergies?.length) return list;
+        const filtered = list.filter(recipe => {
+          const tags = (recipe.tags || []).map(t => t.toLowerCase());
+          const name = recipe.name.toLowerCase();
+          return !userPreferences.allergies!.some(a =>
+            tags.includes(a.toLowerCase()) || name.includes(a.toLowerCase())
           );
         });
-      }
+        return filtered.length > 0 ? filtered : list;
+      };
 
-      // If filtering removed all recipes, fall back to all recipes
-      if (filteredRecipes.length === 0) {
-        filteredRecipes = [...recipes];
-      }
+      const filteredPrimary = applyFilters(primaryRecipes);
+      const filteredSupp = applyFilters(supplementRecipes);
 
-      // 3. Create shuffled recipe pool (repeat if needed)
+      // 4. Build pool: fill with primary first, supplement only when primary runs short
       let recipePool: SupabaseRecipe[] = [];
       while (recipePool.length < totalSlots) {
-        recipePool = [...recipePool, ...shuffleArray(filteredRecipes)];
+        recipePool = [...recipePool, ...shuffleArray(filteredPrimary)];
+        if (recipePool.length < totalSlots && filteredSupp.length > 0) {
+          recipePool = [...recipePool, ...shuffleArray(filteredSupp)];
+        }
+        // Guard against infinite loop if both pools are empty
+        if (filteredPrimary.length === 0 && filteredSupp.length === 0) break;
       }
 
-      // 4. Generate meal slots
+      const totalAvailable = filteredPrimary.length + filteredSupp.length;
+      if (totalAvailable < totalSlots) {
+        toast({
+          title: 'Limited recipes',
+          description: `Only ${totalAvailable} unique recipes available — some meals will repeat.`,
+        });
+      }
+
+      // 5. Assign recipes to slots
       const mealSlots: MealSlot[] = [];
       let poolIndex = 0;
-
       for (let day = 0; day < 7; day++) {
-        // Lunch dishes
         for (let i = 0; i < dishesPerMeal; i++) {
-          mealSlots.push({
-            dayOfWeek: day,
-            mealType: 'lunch',
-            recipe: recipePool[poolIndex % recipePool.length],
-          });
+          mealSlots.push({ dayOfWeek: day, mealType: 'lunch', recipe: recipePool[poolIndex % recipePool.length] });
           poolIndex++;
         }
-        // Dinner dishes
         for (let i = 0; i < dishesPerMeal; i++) {
-          mealSlots.push({
-            dayOfWeek: day,
-            mealType: 'dinner',
-            recipe: recipePool[poolIndex % recipePool.length],
-          });
+          mealSlots.push({ dayOfWeek: day, mealType: 'dinner', recipe: recipePool[poolIndex % recipePool.length] });
           poolIndex++;
         }
       }
+
+      const sourceLabel = sources.length > 1
+        ? `${sources[0] === 'my-recipes' ? 'My Recipes' : sources[0] === 'saved' ? 'Saved' : 'All'} (+ ${sources.length - 1} more)`
+        : sources[0] === 'my-recipes' ? 'My Recipes' : sources[0] === 'saved' ? 'Saved Recipes' : 'All Recipes';
 
       toast({
         title: 'Meal plan generated!',
-        description: 'Your weekly meal plan is ready. You can adjust it as needed.',
+        description: `Your weekly plan is ready using ${sourceLabel}. Adjust as needed.`,
       });
 
       return mealSlots;
@@ -162,11 +176,7 @@ export function useMealPlanGenerator() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate meal plan';
       setError(errorMessage);
-      toast({
-        title: 'Generation failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      toast({ title: 'Generation failed', description: errorMessage, variant: 'destructive' });
       return [];
     } finally {
       setIsGenerating(false);
