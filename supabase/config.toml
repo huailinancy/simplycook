@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.backfill-recipe-images]
 verify_jwt = false
+
+[functions.generate-recipe-images-ai]
+verify_jwt = false
