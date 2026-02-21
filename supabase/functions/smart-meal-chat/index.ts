@@ -19,33 +19,53 @@ serve(async (req) => {
     const { messages, currentPlan, availableCuisines, weekRange } = await req.json();
 
     const systemPrompt = `You are a smart meal planning assistant for SimplyCook.
-You can answer questions about the current meal plan AND generate new weekly meal plans.
+You MUST always respond with ONLY valid JSON — no markdown, no text outside the JSON.
 
-ALWAYS respond with ONLY valid JSON — no markdown, no text outside the JSON.
+═══════════════════════════════════════════════
+RESPONSE FORMAT A — answering a factual question:
+{"reply": "your answer", "action": null}
 
-───────────────────────────────────────────────
-FORMAT A — answering a question (no plan change):
-{"reply": "your answer here", "action": null}
+RESPONSE FORMAT B — generating or changing the meal plan:
+{
+  "reply": "friendly confirmation of what you planned",
+  "action": {
+    "type": "GENERATE_PLAN",
+    "assignments": [
+      {"dayOfWeek": 0, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
+      {"dayOfWeek": 1, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
+      {"dayOfWeek": 2, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
+      {"dayOfWeek": 3, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
+      {"dayOfWeek": 4, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
+      {"dayOfWeek": 5, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"},
+      {"dayOfWeek": 6, "lunch": "<cuisine or 'any'>", "dinner": "<cuisine or 'any'>"}
+    ],
+    "maxCalories": <number or null>,
+    "requiredTags": []
+  }
+}
+═══════════════════════════════════════════════
 
-FORMAT B — generating or changing the meal plan:
-{"reply": "friendly summary of what you planned", "action": {"type": "GENERATE_BY_CUISINE", "assignments": [
-  {"dayOfWeek": 0, "lunch": "<cuisine>", "dinner": "<cuisine>"},
-  {"dayOfWeek": 1, "lunch": "<cuisine>", "dinner": "<cuisine>"},
-  {"dayOfWeek": 2, "lunch": "<cuisine>", "dinner": "<cuisine>"},
-  {"dayOfWeek": 3, "lunch": "<cuisine>", "dinner": "<cuisine>"},
-  {"dayOfWeek": 4, "lunch": "<cuisine>", "dinner": "<cuisine>"},
-  {"dayOfWeek": 5, "lunch": "<cuisine>", "dinner": "<cuisine>"},
-  {"dayOfWeek": 6, "lunch": "<cuisine>", "dinner": "<cuisine>"}
-]}}
-───────────────────────────────────────────────
+CRITICAL — use FORMAT B whenever the user:
+• asks to generate, create, build, suggest, make, or plan meals
+• mentions specific cuisines for days (e.g. "4 days Chinese and 3 days Italian")
+• mentions dietary preferences: "low-calorie", "healthy", "vegetarian", "high-protein", "light"
+• says "I want [type of] meals", "give me a [type] plan", "plan my week"
+• asks to change or redo the meal plan
 
-Rules for FORMAT B:
+FORMAT B rules:
+- assignments MUST contain exactly 7 entries (dayOfWeek 0 through 6)
 - dayOfWeek: 0=Monday 1=Tuesday 2=Wednesday 3=Thursday 4=Friday 5=Saturday 6=Sunday
-- You MUST include all 7 days (dayOfWeek 0 through 6) in the assignments array
-- Use ONLY cuisine names from the Available Cuisines list below
-- "X days [Cuisine A] and Y days [Cuisine B]" → assign Cuisine A to days 0..X-1, Cuisine B to days X..X+Y-1
-- If a cuisine isn't in the list, pick the closest available alternative and mention it in the reply
-- lunch and dinner can have different cuisines if the user asks
+- cuisine values: use names from the Available Cuisines list, OR use "any" for no preference
+- "X days [Cuisine A] and Y days [Cuisine B]" → Cuisine A for days 0..X-1, Cuisine B for days X..X+Y-1
+- If no cuisine specified, use "any" for all days
+- maxCalories: set a number for calorie-restricted requests:
+    "low-calorie" / "light" → 450
+    "medium-calorie" / "balanced" → 600
+    no calorie preference → null
+- requiredTags: array of tag strings to require (e.g. ["vegetarian"]), usually []
+
+ONLY use FORMAT A for purely factual questions about the CURRENT plan
+(e.g. "What's on Monday?", "How many calories total?", "What's for dinner Thursday?").
 
 Current week: ${weekRange}
 
@@ -67,8 +87,8 @@ ${(availableCuisines as string[]).join(', ')}`;
           { role: 'system', content: systemPrompt },
           ...messages,
         ],
-        temperature: 0.3,
-        max_tokens: 800,
+        temperature: 0.2,
+        max_tokens: 900,
         response_format: { type: 'json_object' },
       }),
     });

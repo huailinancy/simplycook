@@ -106,12 +106,13 @@ export default function MealPlanChatBox() {
             <div className="px-3 pb-2 flex flex-wrap gap-1.5">
               {[
                 '4 days Chinese, 3 days Italian',
+                'Low-calorie meals this week',
+                'Vegetarian plan for the week',
                 "What's on Monday?",
-                'Total calories this week?',
               ].map(chip => (
                 <button
                   key={chip}
-                  onClick={() => { setInput(chip); }}
+                  onClick={() => setInput(chip)}
                   className="text-xs px-2 py-1 rounded-full border border-border hover:bg-muted transition-colors"
                 >
                   {chip}
