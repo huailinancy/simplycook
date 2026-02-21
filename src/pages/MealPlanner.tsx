@@ -51,7 +51,7 @@ function RecipeCardContent({ recipe, language, showRemove, onRemove, recipePath 
   onRemove: () => void;
   recipePath?: string;
 }) {
-  const nameLabel = getLocalizedRecipe(recipe, language).name;
+  const nameLabel = getLocalizedRecipe(recipe, language as "en" | "zh").name;
 
   return (
     <>
