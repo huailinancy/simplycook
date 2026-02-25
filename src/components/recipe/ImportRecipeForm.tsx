@@ -5,9 +5,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Save, Loader2, Wand2, Upload, X } from 'lucide-react';
+import { Plus, Trash2, Save, Loader2, Wand2, Upload, X, AlertTriangle } from 'lucide-react';
 import { CUISINE_TYPES, MEAL_TYPES, SupabaseRecipe } from '@/types/recipe';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Ingredient {
   name: string;
@@ -59,6 +61,10 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [autoFillError, setAutoFillError] = useState('');
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+
+  const { user } = useAuth();
+  const { language } = useLanguage();
 
   // Populate form with initial data when editing
   useEffect(() => {
@@ -135,11 +141,34 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
     setPhotoPreview('');
   };
 
+  // Check for duplicate recipe name
+  const checkDuplicate = async (recipeName: string) => {
+    if (!user || !recipeName) return;
+    try {
+      const { data } = await supabase
+        .from('recipes')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .ilike('name', recipeName)
+        .limit(1);
+      if (data && data.length > 0) {
+        setDuplicateWarning(
+          language === 'zh'
+            ? `已存在同名食谱「${data[0].name}」，你仍然可以保存。`
+            : `A recipe named "${data[0].name}" already exists. You can still save it.`
+        );
+      } else {
+        setDuplicateWarning(null);
+      }
+    } catch { /* ignore */ }
+  };
+
   const handleAutoFill = async () => {
     const url = urlInput.trim();
     if (!url && !uploadedPhoto) return;
     setIsAutoFilling(true);
     setAutoFillError('');
+    setDuplicateWarning(null);
     try {
       let body: any = {};
       if (uploadedPhoto && photoPreview) {
@@ -152,7 +181,7 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       const r = data?.recipe;
       if (!r) throw new Error('No recipe data returned');
 
-      if (r.name) setName(r.name);
+      if (r.name) { setName(r.name); await checkDuplicate(r.name); }
       if (r.description) setDescription(r.description);
       if (r.cuisine && CUISINE_TYPES.includes(r.cuisine)) setCuisine(r.cuisine);
       if (r.meal_type) setMealType([r.meal_type]);
@@ -292,14 +321,20 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
           {/* Basic Info */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="name">Recipe Name *</Label>
+              <Label htmlFor="name">{language === 'zh' ? '食谱名称 *' : 'Recipe Name *'}</Label>
               <Input
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Grandma's Apple Pie"
+                onChange={(e) => { setName(e.target.value); setDuplicateWarning(null); }}
+                placeholder={language === 'zh' ? '例如：红烧肉' : "e.g., Grandma's Apple Pie"}
                 required
               />
+              {duplicateWarning && (
+                <div className="flex items-start gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-sm">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <span className="text-amber-700 dark:text-amber-400">{duplicateWarning}</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2 sm:col-span-2">
