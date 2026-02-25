@@ -89,15 +89,24 @@ function DroppableCategoryButton({
   const over = isOver ?? dndIsOver;
 
   return (
-    <div ref={setNodeRef}>
-      <Button
-        variant={isActive ? 'default' : 'outline'}
-        size="sm"
-        className={`h-8 text-xs transition-all ${over ? 'ring-2 ring-primary bg-primary/10 scale-105' : ''}`}
-        onClick={onClick}
-      >
-        {label} ({count})
-      </Button>
+    <div
+      ref={setNodeRef}
+      onClick={onClick}
+      className={`
+        cursor-pointer select-none flex flex-col items-center justify-center gap-1.5
+        min-w-[100px] w-[110px] h-[100px] rounded-lg border-2 p-3
+        transition-all duration-200 text-center
+        ${isActive
+          ? 'border-primary bg-primary/10 shadow-md'
+          : 'border-border bg-card hover:border-primary/40 hover:bg-muted/60'}
+        ${over ? 'ring-2 ring-primary border-primary bg-primary/15 scale-105 shadow-lg' : ''}
+      `}
+    >
+      <Folder className={`h-8 w-8 ${isActive ? 'text-primary' : 'text-muted-foreground'} ${over ? 'text-primary' : ''}`} />
+      <span className={`text-xs font-medium leading-tight line-clamp-2 ${isActive ? 'text-primary' : 'text-foreground'}`}>
+        {label}
+      </span>
+      <span className="text-[10px] text-muted-foreground">({count})</span>
     </div>
   );
 }
@@ -568,16 +577,16 @@ export default function MyRecipes() {
 
           {/* Category Bar */}
           <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Folder className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">{language === 'zh' ? '分类' : 'Categories'}</span>
+            <div className="flex items-center gap-2 mb-4">
+              <Folder className="h-5 w-5 text-primary" />
+              <span className="text-base font-semibold">{language === 'zh' ? '分类' : 'Categories'}</span>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2"
+                className="h-8 px-2"
                 onClick={() => setShowNewCategoryInput(true)}
               >
-                <FolderPlus className="h-3.5 w-3.5" />
+                <FolderPlus className="h-4 w-4" />
               </Button>
             </div>
 
@@ -603,36 +612,45 @@ export default function MyRecipes() {
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {/* All filter */}
-              <Button
-                variant={activeCategoryFilter === null ? 'default' : 'outline'}
-                size="sm"
-                className="h-8 text-xs"
+              <div
                 onClick={() => setActiveCategoryFilter(null)}
+                className={`
+                  cursor-pointer select-none flex flex-col items-center justify-center gap-1.5
+                  min-w-[100px] w-[110px] h-[100px] rounded-lg border-2 p-3
+                  transition-all duration-200 text-center
+                  ${activeCategoryFilter === null
+                    ? 'border-primary bg-primary/10 shadow-md'
+                    : 'border-border bg-card hover:border-primary/40 hover:bg-muted/60'}
+                `}
               >
-                {language === 'zh' ? '全部' : 'All'} ({recipes.length})
-              </Button>
+                <Folder className={`h-8 w-8 ${activeCategoryFilter === null ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={`text-xs font-medium ${activeCategoryFilter === null ? 'text-primary' : 'text-foreground'}`}>
+                  {language === 'zh' ? '全部' : 'All'}
+                </span>
+                <span className="text-[10px] text-muted-foreground">({recipes.length})</span>
+              </div>
 
               {/* Category filters - droppable */}
               {categories.map((cat) => (
-                <div key={cat.id} className="flex items-center">
+                <div key={cat.id} className="relative group/cat">
                   {renamingCategoryId === cat.id ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-col items-center gap-1 w-[110px] h-[100px] justify-center">
                       <Input
                         value={renamingValue}
                         onChange={(e) => setRenamingValue(e.target.value)}
-                        className="h-8 w-32 text-xs"
+                        className="h-7 w-full text-xs text-center"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleRenameCategory(cat.id);
                           if (e.key === 'Escape') setRenamingCategoryId(null);
                         }}
                         autoFocus
                       />
-                      <Button size="sm" className="h-7 px-2 text-xs" onClick={() => handleRenameCategory(cat.id)}>✓</Button>
+                      <Button size="sm" className="h-6 px-3 text-xs" onClick={() => handleRenameCategory(cat.id)}>✓</Button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-0.5">
+                    <>
                       <DroppableCategoryButton
                         categoryId={cat.id}
                         isActive={activeCategoryFilter === cat.id}
@@ -642,7 +660,11 @@ export default function MyRecipes() {
                       />
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-6 px-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute -top-1 -right-1 h-6 w-6 px-0 rounded-full bg-background border border-border opacity-0 group-hover/cat:opacity-100 transition-opacity shadow-sm"
+                          >
                             <MoreHorizontal className="h-3 w-3" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -658,7 +680,7 @@ export default function MyRecipes() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </div>
+                    </>
                   )}
                 </div>
               ))}
