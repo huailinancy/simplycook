@@ -79,7 +79,7 @@ export function getLocalizedRecipe(recipe: SupabaseRecipe, language: 'en' | 'zh'
 }
 
 // Convert Supabase recipe to app Recipe format
-export function toAppRecipe(sr: SupabaseRecipe, language: 'en' | 'zh' = 'zh'): Recipe {
+export function toAppRecipe(sr: SupabaseRecipe, language: 'en' | 'zh' = 'zh', authorName?: string): Recipe {
   const localized = getLocalizedRecipe(sr, language);
   const ingredients = localized.ingredients || [];
 
@@ -87,7 +87,7 @@ export function toAppRecipe(sr: SupabaseRecipe, language: 'en' | 'zh' = 'zh'): R
     uri: sr.id.toString(),
     label: localized.name || sr.name,
     image: sr.image_url || '/placeholder-recipe.jpg',
-    source: 'SimplyCook',
+    source: authorName || (sr.user_id ? (language === 'zh' ? '用户创作' : 'User') : 'SimplyCook'),
     url: '#',
     yield: 2,
     dietLabels: sr.tags?.slice(0, 3) || [],

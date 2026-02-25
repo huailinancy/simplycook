@@ -325,7 +325,7 @@ export default function MyRecipes() {
             {recipes.map((recipe) => (
               <div key={recipe.id} className="relative group">
                 <RecipeCard
-                  recipe={toAppRecipe(recipe, language)}
+                  recipe={toAppRecipe(recipe, language, user?.email?.split('@')[0] || 'Me')}
                   saveCount={recipe.save_count}
                 />
 
