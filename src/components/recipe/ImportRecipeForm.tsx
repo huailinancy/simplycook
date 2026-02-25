@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Save, Loader2, Wand2 } from 'lucide-react';
+import { Plus, Trash2, Save, Loader2, Wand2, Upload, X } from 'lucide-react';
 import { CUISINE_TYPES, MEAL_TYPES, SupabaseRecipe } from '@/types/recipe';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -55,6 +55,8 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
   const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: '', amount: '' }]);
   const [instructions, setInstructions] = useState<string[]>(['']);
   const [urlInput, setUrlInput] = useState('');
+  const [uploadedPhoto, setUploadedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
   const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [autoFillError, setAutoFillError] = useState('');
 
@@ -118,15 +120,34 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
     setInstructions(updated);
   };
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedPhoto(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    setAutoFillError('');
+  };
+
+  const clearPhoto = () => {
+    setUploadedPhoto(null);
+    setPhotoPreview('');
+  };
+
   const handleAutoFill = async () => {
     const url = urlInput.trim();
-    if (!url) return;
+    if (!url && !uploadedPhoto) return;
     setIsAutoFilling(true);
     setAutoFillError('');
     try {
-      const { data, error } = await supabase.functions.invoke('scrape-recipe', {
-        body: { url },
-      });
+      let body: any = {};
+      if (uploadedPhoto && photoPreview) {
+        body = { imageBase64: photoPreview };
+      } else {
+        body = { url };
+      }
+      const { data, error } = await supabase.functions.invoke('scrape-recipe', { body });
       if (error) throw new Error(error.message);
       const r = data?.recipe;
       if (!r) throw new Error('No recipe data returned');
@@ -141,15 +162,14 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       if (r.calories != null) setCalories(String(r.calories));
       if (r.image_url) setImageUrl(r.image_url);
       if (r.author) setAuthor(r.author);
-      // Auto-fill source URL from the input URL
-      if (!sourceUrl && urlInput.trim()) setSourceUrl(urlInput.trim());
+      if (!sourceUrl && url) setSourceUrl(url);
       if (Array.isArray(r.tags) && r.tags.length) setTags(r.tags.join(', '));
       if (Array.isArray(r.ingredients) && r.ingredients.length)
         setIngredients(r.ingredients.map((i: any) => ({ name: String(i.name ?? ''), amount: String(i.amount ?? '') })));
       if (Array.isArray(r.instructions) && r.instructions.length)
         setInstructions(r.instructions.map((s: any) => String(s)));
     } catch (err: any) {
-      setAutoFillError(err?.message ?? 'Failed to extract recipe from URL');
+      setAutoFillError(err?.message ?? 'Failed to extract recipe');
     } finally {
       setIsAutoFilling(false);
     }
@@ -191,25 +211,37 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* URL Auto-fill */}
-          <div className="space-y-2 rounded-lg border border-dashed p-4 bg-muted/30">
-            <Label className="text-sm font-medium">Auto-fill from URL</Label>
+          {/* URL / Photo Auto-fill */}
+          <div className="space-y-3 rounded-lg border border-dashed p-4 bg-muted/30">
+            <Label className="text-sm font-medium">Auto-fill from URL or Photo</Label>
             <p className="text-xs text-muted-foreground">
-              Paste a recipe page URL (e.g. Xiaohongshu, food blogs) and we'll extract the details automatically.
+              Paste a recipe URL or upload a photo of a recipe, then click Auto-fill to extract details.
             </p>
             <div className="flex gap-2">
               <Input
                 value={urlInput}
-                onChange={e => setUrlInput(e.target.value)}
+                onChange={e => { setUrlInput(e.target.value); if (uploadedPhoto) clearPhoto(); }}
                 placeholder="https://..."
                 className="flex-1 text-sm"
-                disabled={isAutoFilling}
+                disabled={isAutoFilling || !!uploadedPhoto}
               />
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoSelect}
+                  disabled={isAutoFilling}
+                />
+                <div className="inline-flex items-center justify-center h-10 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
+                  <Upload className="h-4 w-4" />
+                </div>
+              </label>
               <Button
                 type="button"
                 variant="secondary"
                 onClick={handleAutoFill}
-                disabled={!urlInput.trim() || isAutoFilling}
+                disabled={(!urlInput.trim() && !uploadedPhoto) || isAutoFilling}
               >
                 {isAutoFilling ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -219,6 +251,15 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
                 <span className="ml-1">{isAutoFilling ? 'Extracting…' : 'Auto-fill'}</span>
               </Button>
             </div>
+            {uploadedPhoto && photoPreview && (
+              <div className="flex items-center gap-2 mt-1">
+                <img src={photoPreview} alt="Upload preview" className="h-16 w-16 object-cover rounded-md border" />
+                <span className="text-xs text-muted-foreground flex-1 truncate">{uploadedPhoto.name}</span>
+                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={clearPhoto}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
             {autoFillError && (
               <p className="text-xs text-destructive">{autoFillError}</p>
             )}
