@@ -12,12 +12,13 @@ function isXhsUrl(url: string): boolean {
 }
 
 /** Extract XHS note data from __INITIAL_STATE__ or embedded JSON in HTML */
-function extractXhsData(html: string): { title: string; desc: string; imageUrls: string[] } | null {
+function extractXhsData(html: string): { title: string; desc: string; imageUrls: string[]; author: string } | null {
   // Try to find __INITIAL_STATE__ 
   const stateMatch = html.match(/window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\})\s*<\/script>/);
   
   let title = '';
   let desc = '';
+  let author = '';
   const imageUrls: string[] = [];
 
   // Extract title from og:title or <title>
@@ -35,6 +36,12 @@ function extractXhsData(html: string): { title: string; desc: string; imageUrls:
   const ogDescMatch = html.match(/<meta[^>]+(?:property|name)=["']og:description["'][^>]+content=["']([^"']+)["']/i)
     ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:description["']/i);
   if (ogDescMatch) desc = ogDescMatch[1];
+
+  // Extract author from og:author, author meta, or XHS-specific patterns
+  const authorMatch = html.match(/<meta[^>]+(?:property|name)=["'](?:og:)?author["'][^>]+content=["']([^"']+)["']/i)
+    ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:)?author["']/i)
+    ?? html.match(/<meta[^>]+name=["']author["'][^>]+content=["']([^"']+)["']/i);
+  if (authorMatch) author = authorMatch[1];
 
   // Extract og:image
   const ogImgMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
@@ -79,6 +86,16 @@ function extractXhsData(html: string): { title: string; desc: string; imageUrls:
           String.fromCharCode(parseInt(m.slice(2), 16))
         );
       }
+      // Extract author/nickname from state
+      if (!author) {
+        const nicknameRegex = new RegExp('"nickname"\\s*:\\s*"([^"]{1,})"');
+        const nicknameFromState = stateStr.match(nicknameRegex);
+        if (nicknameFromState) {
+          author = nicknameFromState[1].replace(/\\u[\dA-Fa-f]{4}/g, (m: string) =>
+            String.fromCharCode(parseInt(m.slice(2), 16))
+          );
+        }
+      }
       // Extract image list from state
       const urlRegex = new RegExp('"url"\\s*:\\s*"(https?://[^"]*xhscdn\\.com[^"]*?)"', 'gi');
       for (const m of stateStr.matchAll(urlRegex)) {
@@ -104,7 +121,7 @@ function extractXhsData(html: string): { title: string; desc: string; imageUrls:
   }
 
   if (!title && !desc && uniqueImages.length === 0) return null;
-  return { title, desc, imageUrls: uniqueImages.slice(0, 8) };
+  return { title, desc, imageUrls: uniqueImages.slice(0, 8), author };
 }
 
 /** Pull plain text + image URLs out of raw HTML */
@@ -402,6 +419,7 @@ serve(async (req) => {
     let pageText = '';
     let ogImage: string | null = null;
     let imageUrls: string[] = [];
+    let extractedAuthor = '';
 
     if (isXhs) {
       // Special XHS handling
@@ -410,7 +428,8 @@ serve(async (req) => {
         pageText = `Title: ${xhsData.title}\nDescription: ${xhsData.desc}`;
         imageUrls = xhsData.imageUrls;
         ogImage = imageUrls[0] || null;
-        console.log(`XHS extracted: title="${xhsData.title}", images: ${imageUrls.length}`);
+        extractedAuthor = xhsData.author || '';
+        console.log(`XHS extracted: title="${xhsData.title}", author="${extractedAuthor}", images: ${imageUrls.length}`);
       }
     }
     
@@ -460,6 +479,11 @@ serve(async (req) => {
     // Use the first image as image_url if AI didn't set one
     if (!recipe.image_url && imageUrls.length > 0) {
       recipe.image_url = imageUrls[0];
+    }
+
+    // Add author to recipe data
+    if (extractedAuthor && !recipe.author) {
+      recipe.author = extractedAuthor;
     }
 
     return new Response(JSON.stringify({ recipe }), {

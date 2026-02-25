@@ -28,6 +28,7 @@ interface RecipeFormData {
   image_url: string;
   tags: string[];
   source_url: string;
+  author: string;
 }
 
 interface ImportRecipeFormProps {
@@ -49,6 +50,7 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
   const [calories, setCalories] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
+  const [author, setAuthor] = useState('');
   const [tags, setTags] = useState('');
   const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: '', amount: '' }]);
   const [instructions, setInstructions] = useState<string[]>(['']);
@@ -69,6 +71,7 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       setCalories(initialData.calories?.toString() || '');
       setImageUrl(initialData.image_url || '');
       setSourceUrl((initialData as any).source_url || '');
+      setAuthor((initialData as any).author || '');
       setTags(initialData.tags?.join(', ') || '');
       setIngredients(
         initialData.ingredients?.length
@@ -137,6 +140,9 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       if (r.difficulty) setDifficulty(r.difficulty);
       if (r.calories != null) setCalories(String(r.calories));
       if (r.image_url) setImageUrl(r.image_url);
+      if (r.author) setAuthor(r.author);
+      // Auto-fill source URL from the input URL
+      if (!sourceUrl && urlInput.trim()) setSourceUrl(urlInput.trim());
       if (Array.isArray(r.tags) && r.tags.length) setTags(r.tags.join(', '));
       if (Array.isArray(r.ingredients) && r.ingredients.length)
         setIngredients(r.ingredients.map((i: any) => ({ name: String(i.name ?? ''), amount: String(i.amount ?? '') })));
@@ -169,6 +175,7 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       image_url: imageUrl,
       tags: tags.split(',').map(t => t.trim()).filter(Boolean),
       source_url: sourceUrl,
+      author,
     });
   };
 
@@ -228,6 +235,17 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
               placeholder="https://youtube.com/... or original recipe link"
             />
             <p className="text-xs text-muted-foreground">Save a link to the original video or recipe so you can revisit it later.</p>
+          </div>
+
+          {/* Author */}
+          <div className="space-y-2">
+            <Label htmlFor="author">Author / Creator</Label>
+            <Input
+              id="author"
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              placeholder="Original recipe creator name"
+            />
           </div>
 
           {/* Basic Info */}

@@ -58,6 +58,7 @@ export interface SupabaseRecipe {
   is_published: boolean;
   save_count: number;
   source_url?: string | null;
+  author?: string | null;
 }
 
 // Helper to get localized recipe content
@@ -87,7 +88,7 @@ export function toAppRecipe(sr: SupabaseRecipe, language: 'en' | 'zh' = 'zh', au
     uri: sr.id.toString(),
     label: localized.name || sr.name,
     image: sr.image_url || '/placeholder-recipe.jpg',
-    source: authorName || (sr.user_id ? (language === 'zh' ? '用户创作' : 'User') : 'SimplyCook'),
+    source: sr.author || authorName || (sr.user_id ? (language === 'zh' ? '用户创作' : 'User') : 'SimplyCook'),
     url: '#',
     yield: 2,
     dietLabels: sr.tags?.slice(0, 3) || [],
