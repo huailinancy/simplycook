@@ -361,7 +361,7 @@ export default function MyRecipes() {
 
             {/* Batch Import Dialog */}
             <Dialog open={showBatchImport} onOpenChange={setShowBatchImport}>
-              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
                 <BatchImportPhotos
                   onComplete={() => { fetchMyRecipes(); }}
                   onClose={() => setShowBatchImport(false)}
