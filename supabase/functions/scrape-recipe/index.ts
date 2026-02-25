@@ -129,16 +129,16 @@ async function transcribeVideoAndExtract(
   const mealTypeList = '早餐, 午餐, 晚餐, 小吃, 甜点, breakfast, lunch, dinner, snack, dessert';
 
   const jsonTemplate = `{
-  \"name\": \"recipe name (keep original language if Chinese)\",
-  \"description\": \"1-2 sentence description\",
+  \"name\": \"recipe name (KEEP ORIGINAL LANGUAGE, do NOT translate)\",
+  \"description\": \"1-2 sentence description (KEEP ORIGINAL LANGUAGE)\",
   \"cuisine\": \"one of: ${cuisineList}\",
   \"meal_type\": \"one of: ${mealTypeList}\",
   \"prep_time\": <integer minutes or null>,
   \"cook_time\": <integer minutes or null>,
   \"difficulty\": \"easy | medium | hard\",
   \"calories\": <integer per serving or null>,
-  \"ingredients\": [{\"name\": \"ingredient\", \"amount\": \"quantity + unit\"}],
-  \"instructions\": [\"Step 1: ...\", \"Step 2: ...\", ...],
+  \"ingredients\": [{\"name\": \"ingredient (KEEP ORIGINAL LANGUAGE)\", \"amount\": \"quantity + unit (KEEP ORIGINAL LANGUAGE)\"}],
+  \"instructions\": [\"Step 1: ... (KEEP ORIGINAL LANGUAGE)\", \"Step 2: ...\", ...],
   \"tags\": [\"tag1\", \"tag2\"],
   \"image_url\": ${ogImage ? `\"${ogImage}\"` : 'null'}
 }`;
@@ -157,6 +157,8 @@ async function transcribeVideoAndExtract(
 2. Transcribe all spoken content (the narrator explains ingredients and cooking steps)
 3. Also note any text overlays shown in the video
 4. Extract the complete recipe with precise ingredient amounts and step-by-step instructions
+
+IMPORTANT: Keep ALL text in the ORIGINAL language. Do NOT translate anything. If the video is in Chinese, all output must be in Chinese. If in English, keep in English.
 
 ${pageText.length > 20 ? `Additional context from the page:\n${pageText}\n\n` : ''}Return ONLY valid JSON (no markdown fences):
 ${jsonTemplate}`,
@@ -384,16 +386,16 @@ async function extractRecipeWithVision(pageText: string, imageDataUris: string[]
   const mealTypeList = '早餐, 午餐, 晚餐, 小吃, 甜点, breakfast, lunch, dinner, snack, dessert';
 
   const jsonTemplate = `{
-  \"name\": \"recipe name (keep original language if Chinese)\",
-  \"description\": \"1-2 sentence description\",
+  \"name\": \"recipe name (KEEP ORIGINAL LANGUAGE, do NOT translate)\",
+  \"description\": \"1-2 sentence description (KEEP ORIGINAL LANGUAGE)\",
   \"cuisine\": \"one of: ${cuisineList}\",
   \"meal_type\": \"one of: ${mealTypeList}\",
   \"prep_time\": <integer minutes or null>,
   \"cook_time\": <integer minutes or null>,
   \"difficulty\": \"easy | medium | hard\",
   \"calories\": <integer per serving or null>,
-  \"ingredients\": [{\"name\": \"ingredient\", \"amount\": \"quantity + unit\"}],
-  \"instructions\": [\"Step 1: ...\", \"Step 2: ...\", ...],
+  \"ingredients\": [{\"name\": \"ingredient (KEEP ORIGINAL LANGUAGE)\", \"amount\": \"quantity + unit (KEEP ORIGINAL LANGUAGE)\"}],
+  \"instructions\": [\"Step 1: ... (KEEP ORIGINAL LANGUAGE)\", \"Step 2: ...\", ...],
   \"tags\": [\"tag1\", \"tag2\"],
   \"image_url\": ${ogImage ? `\"${ogImage}\"` : 'null'}
 }`;
@@ -413,6 +415,8 @@ async function extractRecipeWithVision(pageText: string, imageDataUris: string[]
       contentParts.push({
         type: 'text',
         text: `You are a recipe extraction assistant. Look at these recipe images carefully and combine with any text below to extract the complete recipe.
+
+IMPORTANT: Keep ALL text in the ORIGINAL language. Do NOT translate anything. If the source is in Chinese, the name, description, ingredients, and instructions must all be in Chinese. If the source is in English, keep everything in English.
 
 ${pageText.length > 20 ? `Page text:\n${pageText}\n\n` : ''}Return ONLY valid JSON (no markdown fences):
 ${jsonTemplate}`,
@@ -450,7 +454,8 @@ ${jsonTemplate}`,
     }
   }
 
-  const textPrompt = `Extract the recipe and return ONLY this JSON (use null for missing fields):
+  const textPrompt = `Extract the recipe and return ONLY this JSON (use null for missing fields).
+IMPORTANT: Keep ALL text in the ORIGINAL language. Do NOT translate anything.
 ${jsonTemplate}
 
 Content:
