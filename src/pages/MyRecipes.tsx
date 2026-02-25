@@ -5,18 +5,26 @@ import { RecipeCard } from '@/components/recipe/RecipeCard';
 import { ImportRecipeForm } from '@/components/recipe/ImportRecipeForm';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, SupabaseRecipe, toAppRecipe } from '@/types/recipe';
-import { Import, Plus, Globe, Lock, Heart, Pencil, LogIn } from 'lucide-react';
+import { Import, Plus, Globe, Lock, Heart, Pencil, LogIn, CheckSquare, Download, Trash2, X, FileText, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { downloadMultipleRecipesAsPdf, downloadMultipleRecipesAsCsv } from '@/lib/recipeDownload';
 import {
   Dialog,
   DialogContent,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function MyRecipes() {
   const [recipes, setRecipes] = useState<SupabaseRecipe[]>([]);
@@ -24,6 +32,8 @@ export default function MyRecipes() {
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<SupabaseRecipe | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { t, language } = useLanguage();
@@ -212,6 +222,60 @@ export default function MyRecipes() {
     }
   };
 
+  // Selection helpers
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === recipes.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(recipes.map(r => r.id)));
+    }
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const selectedRecipes = recipes.filter(r => selectedIds.has(r.id));
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} recipe(s)?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('recipes')
+        .delete()
+        .in('id', Array.from(selectedIds))
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      toast({
+        title: `${selectedIds.size} recipe(s) deleted`,
+        description: 'Selected recipes have been removed',
+      });
+
+      exitSelectionMode();
+      fetchMyRecipes();
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete recipes',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (authLoading) {
     return (
       <Layout>
@@ -262,23 +326,77 @@ export default function MyRecipes() {
             </p>
           </div>
 
-          <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogTrigger asChild>
-              <Button className="btn-primary-gradient border-0">
-                <Plus className="h-4 w-4 mr-2" />
-                {t('myRecipes.addRecipe')}
+          <div className="flex items-center gap-2">
+            {/* Select mode toggle */}
+            {recipes.length > 0 && !selectionMode && (
+              <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
+                <CheckSquare className="h-4 w-4 mr-2" />
+                {language === 'zh' ? '选择' : 'Select'}
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <ImportRecipeForm
-                onSubmit={handleCreateRecipe}
-                isSubmitting={isSubmitting}
-                onCancel={() => setShowForm(false)}
-                mode="create"
-              />
-            </DialogContent>
-          </Dialog>
+            )}
+
+            <Dialog open={showForm} onOpenChange={setShowForm}>
+              <DialogTrigger asChild>
+                <Button className="btn-primary-gradient border-0">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t('myRecipes.addRecipe')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <ImportRecipeForm
+                  onSubmit={handleCreateRecipe}
+                  isSubmitting={isSubmitting}
+                  onCancel={() => setShowForm(false)}
+                  mode="create"
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
+
+        {/* Selection toolbar */}
+        {selectionMode && (
+          <div className="flex items-center justify-between gap-3 mb-6 p-3 rounded-lg bg-muted/50 border border-border">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={recipes.length > 0 && selectedIds.size === recipes.length}
+                onCheckedChange={toggleSelectAll}
+              />
+              <span className="text-sm text-muted-foreground">
+                {selectedIds.size > 0
+                  ? (language === 'zh' ? `已选择 ${selectedIds.size} 个` : `${selectedIds.size} selected`)
+                  : (language === 'zh' ? '全选' : 'Select all')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={selectedIds.size === 0}>
+                    <Download className="h-4 w-4 mr-2" />
+                    {language === 'zh' ? '下载' : 'Download'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => downloadMultipleRecipesAsPdf(selectedRecipes, language)}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => downloadMultipleRecipesAsCsv(selectedRecipes, language)}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button size="sm" variant="destructive" disabled={selectedIds.size === 0} onClick={handleBulkDelete}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                {language === 'zh' ? '删除' : 'Delete'}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={exitSelectionMode}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Edit Dialog */}
         <Dialog open={!!editingRecipe} onOpenChange={(open) => !open && setEditingRecipe(null)}>
@@ -327,7 +445,22 @@ export default function MyRecipes() {
         {!isLoading && recipes.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {recipes.map((recipe) => (
-              <div key={recipe.id} className="relative group">
+              <div
+                key={recipe.id}
+                className={`relative group ${selectionMode ? 'cursor-pointer' : ''} ${selectionMode && selectedIds.has(recipe.id) ? 'ring-2 ring-primary rounded-xl' : ''}`}
+                onClick={selectionMode ? (e) => { e.preventDefault(); toggleSelect(recipe.id); } : undefined}
+              >
+                {/* Selection checkbox */}
+                {selectionMode && (
+                  <div className="absolute top-3 left-3 z-20">
+                    <Checkbox
+                      checked={selectedIds.has(recipe.id)}
+                      onCheckedChange={() => toggleSelect(recipe.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-background/90 backdrop-blur-sm"
+                    />
+                  </div>
+                )}
                 <RecipeCard
                   recipe={toAppRecipe(recipe, language, user?.email?.split('@')[0] || 'Me')}
                   saveCount={recipe.save_count}
@@ -362,8 +495,8 @@ export default function MyRecipes() {
                   )}
                 </div>
 
-                {/* Action buttons */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 pt-8 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Action buttons - hidden in selection mode */}
+                {!selectionMode && <div className="absolute bottom-0 left-0 right-0 p-3 pt-8 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="flex gap-2">
                     {/* Edit button */}
                     <Button
@@ -409,7 +542,7 @@ export default function MyRecipes() {
                       {t('myRecipes.delete')}
                     </Button>
                   </div>
-                </div>
+                </div>}
               </div>
             ))}
           </div>
