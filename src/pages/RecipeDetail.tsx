@@ -8,7 +8,9 @@ import { SupabaseRecipe, getLocalizedRecipe } from '@/types/recipe';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSavedRecipesContext } from '@/contexts/SavedRecipesContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { ArrowLeft, Clock, Flame, ChefHat, Bookmark, Heart, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Clock, Flame, ChefHat, Bookmark, Heart, ExternalLink, Download } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { downloadRecipeAsPdf, downloadRecipeAsCsv } from '@/lib/recipeDownload';
 import { cn } from '@/lib/utils';
 
 export default function RecipeDetail() {
@@ -87,20 +89,40 @@ export default function RecipeDetail() {
             </Button>
           </Link>
 
-          {/* Save button */}
-          {user && (
-            <Button
-              variant={isSaved ? "secondary" : "outline"}
-              className={cn(
-                "gap-2",
-                isSaved && "bg-primary text-primary-foreground hover:bg-primary/90"
-              )}
-              onClick={handleSaveClick}
-            >
-              <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} />
-              {isSaved ? (language === 'zh' ? '已收藏' : 'Saved') : (language === 'zh' ? '收藏食谱' : 'Save Recipe')}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Download button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  {language === 'zh' ? '下载' : 'Download'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => recipe && downloadRecipeAsPdf(recipe, language)}>
+                  {language === 'zh' ? '下载 PDF' : 'Download PDF'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => recipe && downloadRecipeAsCsv(recipe, language)}>
+                  {language === 'zh' ? '下载 CSV' : 'Download CSV'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Save button */}
+            {user && (
+              <Button
+                variant={isSaved ? "secondary" : "outline"}
+                className={cn(
+                  "gap-2",
+                  isSaved && "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+                onClick={handleSaveClick}
+              >
+                <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} />
+                {isSaved ? (language === 'zh' ? '已收藏' : 'Saved') : (language === 'zh' ? '收藏食谱' : 'Save Recipe')}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Header */}
