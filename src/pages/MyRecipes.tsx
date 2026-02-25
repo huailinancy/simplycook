@@ -6,15 +6,17 @@ import { ImportRecipeForm } from '@/components/recipe/ImportRecipeForm';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, SupabaseRecipe, toAppRecipe } from '@/types/recipe';
-import { Import, Plus, Globe, Lock, Heart, Pencil, LogIn, CheckSquare, Download, Trash2, X, FileText, FileSpreadsheet, Images } from 'lucide-react';
+import { Import, Plus, Globe, Lock, Heart, Pencil, LogIn, CheckSquare, Download, Trash2, X, FileText, FileSpreadsheet, Images, FolderPlus, Folder, MoreHorizontal, Tag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { downloadMultipleRecipesAsPdf, downloadMultipleRecipesAsCsv } from '@/lib/recipeDownload';
 import { BatchImportPhotos } from '@/components/recipe/BatchImportPhotos';
+import { useRecipeCategories } from '@/hooks/useRecipeCategories';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +27,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 export default function MyRecipes() {
@@ -36,9 +39,22 @@ export default function MyRecipes() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBatchImport, setShowBatchImport] = useState(false);
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null); // null = all
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [renamingCategoryId, setRenamingCategoryId] = useState<string | null>(null);
+  const [renamingValue, setRenamingValue] = useState('');
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { t, language } = useLanguage();
+  const {
+    categories,
+    addCategory,
+    renameCategory,
+    deleteCategory,
+    assignRecipesToCategory,
+    fetchCategories,
+  } = useRecipeCategories();
 
   const fetchMyRecipes = async () => {
     if (!user) return;
@@ -70,6 +86,13 @@ export default function MyRecipes() {
       fetchMyRecipes();
     }
   }, [user]);
+
+  // Filter recipes by active category
+  const filteredRecipes = activeCategoryFilter === null
+    ? recipes
+    : activeCategoryFilter === 'uncategorized'
+      ? recipes.filter(r => !r.category_id)
+      : recipes.filter(r => r.category_id === activeCategoryFilter);
 
   const handleCreateRecipe = async (recipeData: {
     name: string;
@@ -234,10 +257,10 @@ export default function MyRecipes() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === recipes.length) {
+    if (selectedIds.size === filteredRecipes.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(recipes.map(r => r.id)));
+      setSelectedIds(new Set(filteredRecipes.map(r => r.id)));
     }
   };
 
@@ -278,6 +301,54 @@ export default function MyRecipes() {
     }
   };
 
+  const handleAssignToCategory = async (categoryId: string | null) => {
+    if (selectedIds.size === 0) return;
+    const success = await assignRecipesToCategory(Array.from(selectedIds), categoryId);
+    if (success) {
+      toast({
+        title: language === 'zh' ? '已分配分类' : 'Category assigned',
+        description: language === 'zh'
+          ? `${selectedIds.size} 个食谱已更新`
+          : `${selectedIds.size} recipe(s) updated`,
+      });
+      exitSelectionMode();
+      fetchMyRecipes();
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    const cat = await addCategory(newCategoryName.trim());
+    if (cat) {
+      setNewCategoryName('');
+      setShowNewCategoryInput(false);
+      toast({
+        title: language === 'zh' ? '分类已创建' : 'Category created',
+        description: cat.name,
+      });
+    }
+  };
+
+  const handleRenameCategory = async (id: string) => {
+    if (!renamingValue.trim()) return;
+    await renameCategory(id, renamingValue.trim());
+    setRenamingCategoryId(null);
+    setRenamingValue('');
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm(language === 'zh' ? '确定删除此分类？食谱不会被删除。' : 'Delete this category? Recipes will not be deleted.')) return;
+    await deleteCategory(id);
+    if (activeCategoryFilter === id) setActiveCategoryFilter(null);
+    fetchMyRecipes();
+  };
+
+  const getCategoryRecipeCount = (categoryId: string) => {
+    return recipes.filter(r => r.category_id === categoryId).length;
+  };
+
+  const uncategorizedCount = recipes.filter(r => !r.category_id).length;
+
   if (authLoading) {
     return (
       <Layout>
@@ -315,7 +386,7 @@ export default function MyRecipes() {
     <Layout>
       <div className="container py-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Import className="h-8 w-8 text-primary" />
@@ -371,12 +442,124 @@ export default function MyRecipes() {
           </div>
         </div>
 
+        {/* Category Bar */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Folder className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{language === 'zh' ? '分类' : 'Categories'}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setShowNewCategoryInput(true)}
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
+          {showNewCategoryInput && (
+            <div className="flex items-center gap-2 mb-3">
+              <Input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder={language === 'zh' ? '分类名称...' : 'Category name...'}
+                className="h-8 w-48 text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddCategory();
+                  if (e.key === 'Escape') { setShowNewCategoryInput(false); setNewCategoryName(''); }
+                }}
+                autoFocus
+              />
+              <Button size="sm" className="h-8" onClick={handleAddCategory}>
+                {language === 'zh' ? '添加' : 'Add'}
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8" onClick={() => { setShowNewCategoryInput(false); setNewCategoryName(''); }}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {/* All filter */}
+            <Button
+              variant={activeCategoryFilter === null ? 'default' : 'outline'}
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setActiveCategoryFilter(null)}
+            >
+              {language === 'zh' ? '全部' : 'All'} ({recipes.length})
+            </Button>
+
+            {/* Category filters */}
+            {categories.map((cat) => (
+              <div key={cat.id} className="flex items-center">
+                {renamingCategoryId === cat.id ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      value={renamingValue}
+                      onChange={(e) => setRenamingValue(e.target.value)}
+                      className="h-8 w-32 text-xs"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRenameCategory(cat.id);
+                        if (e.key === 'Escape') setRenamingCategoryId(null);
+                      }}
+                      autoFocus
+                    />
+                    <Button size="sm" className="h-7 px-2 text-xs" onClick={() => handleRenameCategory(cat.id)}>✓</Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-0.5">
+                    <Button
+                      variant={activeCategoryFilter === cat.id ? 'default' : 'outline'}
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => setActiveCategoryFilter(cat.id)}
+                    >
+                      {cat.name} ({getCategoryRecipeCount(cat.id)})
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-6 px-0">
+                          <MoreHorizontal className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => { setRenamingCategoryId(cat.id); setRenamingValue(cat.name); }}>
+                          <Pencil className="h-3.5 w-3.5 mr-2" />
+                          {language === 'zh' ? '重命名' : 'Rename'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteCategory(cat.id)}>
+                          <Trash2 className="h-3.5 w-3.5 mr-2" />
+                          {language === 'zh' ? '删除' : 'Delete'}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Uncategorized filter */}
+            {uncategorizedCount > 0 && (
+              <Button
+                variant={activeCategoryFilter === 'uncategorized' ? 'default' : 'outline'}
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setActiveCategoryFilter('uncategorized')}
+              >
+                {language === 'zh' ? '未分类' : 'Uncategorized'} ({uncategorizedCount})
+              </Button>
+            )}
+          </div>
+        </div>
+
         {/* Selection toolbar */}
         {selectionMode && (
           <div className="flex items-center justify-between gap-3 mb-6 p-3 rounded-lg bg-muted/50 border border-border">
             <div className="flex items-center gap-3">
               <Checkbox
-                checked={recipes.length > 0 && selectedIds.size === recipes.length}
+                checked={filteredRecipes.length > 0 && selectedIds.size === filteredRecipes.length}
                 onCheckedChange={toggleSelectAll}
               />
               <span className="text-sm text-muted-foreground">
@@ -385,7 +568,30 @@ export default function MyRecipes() {
                   : (language === 'zh' ? '全选' : 'Select all')}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Assign to category */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={selectedIds.size === 0}>
+                    <Tag className="h-4 w-4 mr-2" />
+                    {language === 'zh' ? '分配分类' : 'Assign Category'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {categories.map((cat) => (
+                    <DropdownMenuItem key={cat.id} onClick={() => handleAssignToCategory(cat.id)}>
+                      <Folder className="h-4 w-4 mr-2" />
+                      {cat.name}
+                    </DropdownMenuItem>
+                  ))}
+                  {categories.length > 0 && <DropdownMenuSeparator />}
+                  <DropdownMenuItem onClick={() => handleAssignToCategory(null)}>
+                    <X className="h-4 w-4 mr-2" />
+                    {language === 'zh' ? '移除分类' : 'Remove Category'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="outline" disabled={selectedIds.size === 0}>
@@ -459,116 +665,139 @@ export default function MyRecipes() {
         )}
 
         {/* Recipe grid */}
-        {!isLoading && recipes.length > 0 && (
+        {!isLoading && filteredRecipes.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {recipes.map((recipe) => (
-              <div
-                key={recipe.id}
-                className={`relative group ${selectionMode ? 'cursor-pointer' : ''} ${selectionMode && selectedIds.has(recipe.id) ? 'ring-2 ring-primary rounded-xl' : ''}`}
-                onClick={selectionMode ? (e) => { e.preventDefault(); toggleSelect(recipe.id); } : undefined}
-              >
-                {/* Selection checkbox */}
-                {selectionMode && (
-                  <div className="absolute top-3 left-3 z-20">
-                    <Checkbox
-                      checked={selectedIds.has(recipe.id)}
-                      onCheckedChange={() => toggleSelect(recipe.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="bg-background/90 backdrop-blur-sm"
-                    />
-                  </div>
-                )}
-                <RecipeCard
-                  recipe={toAppRecipe(recipe, language, user?.email?.split('@')[0] || 'Me')}
-                  saveCount={recipe.save_count}
-                />
-
-                {/* Recipe controls overlay */}
-                <div className="absolute top-0 left-0 right-0 p-3 flex justify-between items-start pointer-events-none">
-                  {/* Status badge */}
-                  <Badge
-                    variant={recipe.is_published ? "default" : "secondary"}
-                    className={recipe.is_published ? "bg-herb text-herb-foreground" : ""}
-                  >
-                    {recipe.is_published ? (
-                      <>
-                        <Globe className="h-3 w-3 mr-1" />
-                        {t('myRecipes.published')}
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-3 w-3 mr-1" />
-                        {t('myRecipes.private')}
-                      </>
-                    )}
-                  </Badge>
-
-                  {/* Save count if published */}
-                  {recipe.is_published && recipe.save_count > 0 && (
-                    <Badge variant="secondary" className="bg-background/90 backdrop-blur-sm">
-                      <Heart className="h-3 w-3 mr-1 text-rose-500 fill-rose-500" />
-                      {recipe.save_count}
-                    </Badge>
+            {filteredRecipes.map((recipe) => {
+              const categoryName = categories.find(c => c.id === recipe.category_id)?.name;
+              return (
+                <div
+                  key={recipe.id}
+                  className={`relative group ${selectionMode ? 'cursor-pointer' : ''} ${selectionMode && selectedIds.has(recipe.id) ? 'ring-2 ring-primary rounded-xl' : ''}`}
+                  onClick={selectionMode ? (e) => { e.preventDefault(); toggleSelect(recipe.id); } : undefined}
+                >
+                  {/* Selection checkbox */}
+                  {selectionMode && (
+                    <div className="absolute top-3 left-3 z-20">
+                      <Checkbox
+                        checked={selectedIds.has(recipe.id)}
+                        onCheckedChange={() => toggleSelect(recipe.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-background/90 backdrop-blur-sm"
+                      />
+                    </div>
                   )}
-                </div>
+                  <RecipeCard
+                    recipe={toAppRecipe(recipe, language, user?.email?.split('@')[0] || 'Me')}
+                    saveCount={recipe.save_count}
+                  />
 
-                {/* Action buttons - hidden in selection mode */}
-                {!selectionMode && <div className="absolute bottom-0 left-0 right-0 p-3 pt-8 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="flex gap-2">
-                    {/* Edit button */}
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setEditingRecipe(recipe);
-                      }}
-                    >
-                      <Pencil className="h-3 w-3 mr-1" />
-                      {t('myRecipes.edit')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={recipe.is_published ? "secondary" : "default"}
-                      className="flex-1"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleTogglePublish(recipe.id, recipe.is_published);
-                      }}
+                  {/* Category badge */}
+                  {categoryName && (
+                    <div className="absolute top-3 right-3 z-10">
+                      <Badge variant="secondary" className="bg-background/90 backdrop-blur-sm text-[10px]">
+                        <Folder className="h-2.5 w-2.5 mr-1" />
+                        {categoryName}
+                      </Badge>
+                    </div>
+                  )}
+
+                  {/* Recipe controls overlay */}
+                  <div className="absolute top-0 left-0 right-0 p-3 flex justify-between items-start pointer-events-none">
+                    {/* Status badge */}
+                    <Badge
+                      variant={recipe.is_published ? "default" : "secondary"}
+                      className={recipe.is_published ? "bg-herb text-herb-foreground" : ""}
                     >
                       {recipe.is_published ? (
                         <>
-                          <Lock className="h-3 w-3 mr-1" />
-                          {t('myRecipes.unpublish')}
+                          <Globe className="h-3 w-3 mr-1" />
+                          {t('myRecipes.published')}
                         </>
                       ) : (
                         <>
-                          <Globe className="h-3 w-3 mr-1" />
-                          {t('myRecipes.publish')}
+                          <Lock className="h-3 w-3 mr-1" />
+                          {t('myRecipes.private')}
                         </>
                       )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleDeleteRecipe(recipe.id);
-                      }}
-                    >
-                      {t('myRecipes.delete')}
-                    </Button>
+                    </Badge>
+
+                    {/* Save count if published */}
+                    {recipe.is_published && recipe.save_count > 0 && (
+                      <Badge variant="secondary" className="bg-background/90 backdrop-blur-sm">
+                        <Heart className="h-3 w-3 mr-1 text-rose-500 fill-rose-500" />
+                        {recipe.save_count}
+                      </Badge>
+                    )}
                   </div>
-                </div>}
-              </div>
-            ))}
+
+                  {/* Action buttons - hidden in selection mode */}
+                  {!selectionMode && <div className="absolute bottom-0 left-0 right-0 p-3 pt-8 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-2">
+                      {/* Edit button */}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setEditingRecipe(recipe);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />
+                        {t('myRecipes.edit')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={recipe.is_published ? "secondary" : "default"}
+                        className="flex-1"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleTogglePublish(recipe.id, recipe.is_published);
+                        }}
+                      >
+                        {recipe.is_published ? (
+                          <>
+                            <Lock className="h-3 w-3 mr-1" />
+                            {t('myRecipes.unpublish')}
+                          </>
+                        ) : (
+                          <>
+                            <Globe className="h-3 w-3 mr-1" />
+                            {t('myRecipes.publish')}
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleDeleteRecipe(recipe.id);
+                        }}
+                      >
+                        {t('myRecipes.delete')}
+                      </Button>
+                    </div>
+                  </div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Empty filtered state */}
+        {!isLoading && recipes.length > 0 && filteredRecipes.length === 0 && (
+          <div className="text-center py-16">
+            <Folder className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground">
+              {language === 'zh' ? '该分类下没有食谱' : 'No recipes in this category'}
+            </p>
           </div>
         )}
 
         {/* Count */}
-        {recipes.length > 0 && (
+        {filteredRecipes.length > 0 && (
           <p className="text-center text-muted-foreground mt-8">
-            {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
+            {filteredRecipes.length} {filteredRecipes.length === 1 ? 'recipe' : 'recipes'}
           </p>
         )}
       </div>
