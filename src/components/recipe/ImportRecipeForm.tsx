@@ -27,6 +27,7 @@ interface RecipeFormData {
   instructions: string[];
   image_url: string;
   tags: string[];
+  source_url: string;
 }
 
 interface ImportRecipeFormProps {
