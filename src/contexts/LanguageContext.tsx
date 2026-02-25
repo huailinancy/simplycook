@@ -699,7 +699,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback((key: string): string => {
-    return translations[language][key] || key;
+    const val = translations[language][key];
+    return val !== undefined ? val : key;
   }, [language]);
 
   return (
