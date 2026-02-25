@@ -63,6 +63,7 @@ export type Database = {
           name: string
           prep_time: number | null
           save_count: number | null
+          source_url: string | null
           tags: Json | null
           user_id: string | null
         }
@@ -87,6 +88,7 @@ export type Database = {
           name: string
           prep_time?: number | null
           save_count?: number | null
+          source_url?: string | null
           tags?: Json | null
           user_id?: string | null
         }
@@ -111,6 +113,7 @@ export type Database = {
           name?: string
           prep_time?: number | null
           save_count?: number | null
+          source_url?: string | null
           tags?: Json | null
           user_id?: string | null
         }

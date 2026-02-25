@@ -26,7 +26,7 @@ export interface SupabaseRecipe {
   name: string;
   english_name: string | null;
   description: string | null;
-  english_description: string | null;
+  english_description?: string | null;
   meal_type: string[] | null;
   cuisine: string | null;
   category: string | null;
@@ -54,10 +54,10 @@ export interface SupabaseRecipe {
   tags: string[] | null;
   image_url: string | null;
   created_at: string | null;
-  // User-imported recipe fields
   user_id: string | null;
   is_published: boolean;
   save_count: number;
+  source_url?: string | null;
 }
 
 // Helper to get localized recipe content

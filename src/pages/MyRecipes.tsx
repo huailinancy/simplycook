@@ -72,6 +72,7 @@ export default function MyRecipes() {
     instructions: string[];
     image_url: string;
     tags: string[];
+    source_url: string;
   }) => {
     if (!user) return;
 
@@ -120,6 +121,7 @@ export default function MyRecipes() {
     instructions: string[];
     image_url: string;
     tags: string[];
+    source_url: string;
   }) => {
     if (!user || !editingRecipe) return;
 

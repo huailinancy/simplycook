@@ -8,7 +8,7 @@ import { SupabaseRecipe, getLocalizedRecipe } from '@/types/recipe';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSavedRecipesContext } from '@/contexts/SavedRecipesContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { ArrowLeft, Clock, Flame, ChefHat, Bookmark, Heart } from 'lucide-react';
+import { ArrowLeft, Clock, Flame, ChefHat, Bookmark, Heart, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function RecipeDetail() {
@@ -147,6 +147,14 @@ export default function RecipeDetail() {
             <Badge variant="outline">{recipe.cuisine}</Badge>
           )}
         </div>
+
+        {/* Source link */}
+        {(recipe as any).source_url && (
+          <a href={(recipe as any).source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mb-6">
+            <ExternalLink className="h-4 w-4" />
+            {language === 'zh' ? '查看原始来源' : 'View original source'}
+          </a>
+        )}
 
         {/* Description */}
         {(localizedContent?.description || recipe.description) && (
