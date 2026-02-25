@@ -10,10 +10,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, SupabaseRecipe, toAppRecipe } from '@/types/recipe';
-import { Import, Plus, Globe, Lock, Heart, Pencil, LogIn, CheckSquare, Download, Trash2, X, FileText, FileSpreadsheet } from 'lucide-react';
+import { Import, Plus, Globe, Lock, Heart, Pencil, LogIn, CheckSquare, Download, Trash2, X, FileText, FileSpreadsheet, Images } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { downloadMultipleRecipesAsPdf, downloadMultipleRecipesAsCsv } from '@/lib/recipeDownload';
+import { BatchImportPhotos } from '@/components/recipe/BatchImportPhotos';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ export default function MyRecipes() {
   const [editingRecipe, setEditingRecipe] = useState<SupabaseRecipe | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBatchImport, setShowBatchImport] = useState(false);
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { t, language } = useLanguage();
@@ -335,6 +337,11 @@ export default function MyRecipes() {
               </Button>
             )}
 
+            <Button variant="outline" onClick={() => setShowBatchImport(true)}>
+              <Images className="h-4 w-4 mr-2" />
+              {language === 'zh' ? '批量导入' : 'Batch Import'}
+            </Button>
+
             <Dialog open={showForm} onOpenChange={setShowForm}>
               <DialogTrigger asChild>
                 <Button className="btn-primary-gradient border-0">
@@ -348,6 +355,16 @@ export default function MyRecipes() {
                   isSubmitting={isSubmitting}
                   onCancel={() => setShowForm(false)}
                   mode="create"
+                />
+              </DialogContent>
+            </Dialog>
+
+            {/* Batch Import Dialog */}
+            <Dialog open={showBatchImport} onOpenChange={setShowBatchImport}>
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <BatchImportPhotos
+                  onComplete={() => { fetchMyRecipes(); }}
+                  onClose={() => setShowBatchImport(false)}
                 />
               </DialogContent>
             </Dialog>
