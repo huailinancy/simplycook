@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
-import { Upload, X, Loader2, CheckCircle2, AlertCircle, Images } from 'lucide-react';
+import { Upload, X, Loader2, CheckCircle2, AlertCircle, Images, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -12,9 +12,10 @@ interface PhotoItem {
   id: string;
   file: File;
   preview: string;
-  status: 'pending' | 'processing' | 'done' | 'error';
+  status: 'pending' | 'processing' | 'done' | 'error' | 'duplicate';
   recipeName?: string;
   error?: string;
+  extractedRecipe?: any;
 }
 
 interface BatchImportPhotosProps {
@@ -56,6 +57,57 @@ export function BatchImportPhotos({ onComplete, onClose }: BatchImportPhotosProp
       reader.readAsDataURL(file);
     });
 
+  const checkDuplicate = async (recipeName: string): Promise<boolean> => {
+    if (!user || !recipeName) return false;
+    try {
+      const { data } = await supabase
+        .from('recipes')
+        .select('id')
+        .eq('user_id', user.id)
+        .ilike('name', recipeName)
+        .limit(1);
+      return (data && data.length > 0) || false;
+    } catch { return false; }
+  };
+
+  const saveRecipe = async (recipe: any) => {
+    const { error: insertError } = await supabase.from('recipes').insert({
+      name: recipe.name,
+      description: recipe.description || null,
+      cuisine: recipe.cuisine || null,
+      meal_type: recipe.meal_type ? [recipe.meal_type] : [],
+      prep_time: recipe.prep_time || null,
+      cook_time: recipe.cook_time || null,
+      difficulty: recipe.difficulty || null,
+      calories: recipe.calories || null,
+      ingredients: recipe.ingredients || [],
+      instructions: recipe.instructions || [],
+      tags: recipe.tags || [],
+      image_url: recipe.image_url || null,
+      author: recipe.author || null,
+      source_url: recipe.source_url || null,
+      user_id: user!.id,
+      is_published: false,
+      save_count: 0,
+    });
+    if (insertError) throw new Error(insertError.message);
+  };
+
+  const confirmDuplicate = (photoId: string) => {
+    const photo = photos.find(p => p.id === photoId);
+    if (!photo?.extractedRecipe) return;
+    saveRecipe(photo.extractedRecipe).then(() => {
+      setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, status: 'done' } : p));
+      onComplete();
+    }).catch((err) => {
+      setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, status: 'error', error: err.message } : p));
+    });
+  };
+
+  const skipDuplicate = (photoId: string) => {
+    setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, status: 'error', error: language === 'zh' ? '已跳过（重复）' : 'Skipped (duplicate)' } : p));
+  };
+
   const processAll = async () => {
     if (!user || photos.length === 0) return;
     setIsProcessing(true);
@@ -63,7 +115,7 @@ export function BatchImportPhotos({ onComplete, onClose }: BatchImportPhotosProp
 
     for (let i = 0; i < photos.length; i++) {
       const photo = photos[i];
-      if (photo.status === 'done') continue;
+      if (photo.status === 'done' || photo.status === 'duplicate') continue;
 
       setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, status: 'processing' } : p));
 
@@ -77,29 +129,14 @@ export function BatchImportPhotos({ onComplete, onClose }: BatchImportPhotosProp
         const recipe = data?.recipe;
         if (!recipe?.name) throw new Error('No recipe extracted');
 
-        // Save to database
-        const { error: insertError } = await supabase.from('recipes').insert({
-          name: recipe.name,
-          description: recipe.description || null,
-          cuisine: recipe.cuisine || null,
-          meal_type: recipe.meal_type ? [recipe.meal_type] : [],
-          prep_time: recipe.prep_time || null,
-          cook_time: recipe.cook_time || null,
-          difficulty: recipe.difficulty || null,
-          calories: recipe.calories || null,
-          ingredients: recipe.ingredients || [],
-          instructions: recipe.instructions || [],
-          tags: recipe.tags || [],
-          image_url: recipe.image_url || null,
-          author: recipe.author || null,
-          source_url: recipe.source_url || null,
-          user_id: user.id,
-          is_published: false,
-          save_count: 0,
-        });
+        // Check for duplicate
+        const isDuplicate = await checkDuplicate(recipe.name);
+        if (isDuplicate) {
+          setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, status: 'duplicate', recipeName: recipe.name, extractedRecipe: recipe } : p));
+          continue;
+        }
 
-        if (insertError) throw new Error(insertError.message);
-
+        await saveRecipe(recipe);
         setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, status: 'done', recipeName: recipe.name } : p));
         successCount++;
       } catch (err: any) {
@@ -179,8 +216,17 @@ export function BatchImportPhotos({ onComplete, onClose }: BatchImportPhotosProp
                     {language === 'zh' ? '提取中…' : 'Extracting…'}
                   </p>
                 )}
+                {photo.status === 'duplicate' && (
+                  <div>
+                    <p className="text-sm font-medium truncate">{photo.recipeName}</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5">
+                      <AlertTriangle className="h-3 w-3" />
+                      {language === 'zh' ? '已存在同名食谱' : 'Duplicate name found'}
+                    </p>
+                  </div>
+                )}
               </div>
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 flex items-center gap-1">
                 {photo.status === 'done' && <CheckCircle2 className="h-5 w-5 text-green-500" />}
                 {photo.status === 'error' && <AlertCircle className="h-5 w-5 text-destructive" />}
                 {photo.status === 'pending' && !isProcessing && (
@@ -189,6 +235,16 @@ export function BatchImportPhotos({ onComplete, onClose }: BatchImportPhotosProp
                   </Button>
                 )}
                 {photo.status === 'processing' && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+                {photo.status === 'duplicate' && (
+                  <>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => confirmDuplicate(photo.id)}>
+                      {language === 'zh' ? '仍然导入' : 'Import'}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => skipDuplicate(photo.id)}>
+                      {language === 'zh' ? '跳过' : 'Skip'}
+                    </Button>
+                  </>
+                )}
               </div>
             </Card>
           ))}
