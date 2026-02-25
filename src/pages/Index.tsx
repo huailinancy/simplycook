@@ -38,7 +38,7 @@ export default function Index() {
               </div>
 
               <h1 className="font-display text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-                {t('home.heroTitle1')} <span className="text-primary">{t('home.heroTitle2')}</span>,<br />
+                {t('home.heroTitle1')}{t('home.heroTitle2') ? <> <span className="text-primary">{t('home.heroTitle2')}</span>,</> : null}<br />
                 {t('home.heroTitle3')}
               </h1>
 
