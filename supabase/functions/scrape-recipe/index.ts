@@ -562,9 +562,20 @@ serve(async (req) => {
   }
 
   try {
-    const { url } = await req.json();
-    if (!url) throw new Error('URL is required');
+    const body = await req.json();
+    const { url, imageBase64 } = body;
+    if (!url && !imageBase64) throw new Error('URL or image is required');
 
+    // === PHOTO UPLOAD PATH: user uploaded an image directly ===
+    if (imageBase64) {
+      console.log('Processing uploaded photo for recipe extraction...');
+      const recipe = await extractRecipeWithVision('', [imageBase64], null);
+      return new Response(JSON.stringify({ recipe }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // === URL PATH: scrape from link ===
     // 1. Fetch the page (follow redirects)
     const pageRes = await fetch(url, {
       headers: {
