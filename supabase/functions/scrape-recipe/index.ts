@@ -48,12 +48,14 @@ function extractXhsData(html: string): { title: string; desc: string; imageUrls:
     ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
   if (ogImgMatch) imageUrls.push(ogImgMatch[1]);
 
-  // Extract all XHS CDN image URLs from the HTML (they use sns-webpic-qc.xhscdn.com or ci.xiaohongshu.com patterns)
+  // Extract all XHS CDN image URLs from the HTML — exclude avatars and tiny icons
   const seen = new Set<string>(imageUrls);
+  const isContentImage = (u: string) => !/(avatar|\/w\/\d{2,3}\/|badge|icon|logo)/i.test(u);
+  
   // Match image URLs in various contexts: src attributes, JSON strings, CSS backgrounds
   for (const m of html.matchAll(/(https?:\/\/(?:sns-webpic-qc\.xhscdn\.com|ci\.xiaohongshu\.com|sns-img-[a-z]+\.xhscdn\.com)[^\s"'\\)]+)/gi)) {
     const url = m[1].replace(/\\u002F/g, '/');
-    if (!seen.has(url)) {
+    if (!seen.has(url) && isContentImage(url)) {
       seen.add(url);
       imageUrls.push(url);
     }
@@ -62,7 +64,7 @@ function extractXhsData(html: string): { title: string; desc: string; imageUrls:
   // Also extract from data embedded in script tags - XHS stores image IDs in JSON
   for (const m of html.matchAll(/\"(https?:\/\/[^"]*xhscdn\.com[^"]*\.(jpg|jpeg|png|webp)[^"]*?)\"/gi)) {
     const url = m[1].replace(/\\u002F/g, '/');
-    if (!seen.has(url)) {
+    if (!seen.has(url) && isContentImage(url)) {
       seen.add(url);
       imageUrls.push(url);
     }
@@ -72,12 +74,15 @@ function extractXhsData(html: string): { title: string; desc: string; imageUrls:
   if (stateMatch) {
     try {
       const stateStr = stateMatch[1];
-      const descRegex = new RegExp('"desc"\\s*:\\s*"([^"]{5,})"');
-      const descFromState = stateStr.match(descRegex);
-      if (descFromState && descFromState[1].length > desc.length) {
-        desc = descFromState[1].replace(/\\n/g, '\n').replace(/\\u[\dA-Fa-f]{4}/g, (m: string) =>
+      // Extract ALL desc fields and use the longest one (video posts often have detailed descriptions)
+      const descRegex = /"desc"\s*:\s*"([^"]{5,})"/g;
+      for (const dm of stateStr.matchAll(descRegex)) {
+        const decoded = dm[1].replace(/\\n/g, '\n').replace(/\\u[\dA-Fa-f]{4}/g, (m: string) =>
           String.fromCharCode(parseInt(m.slice(2), 16))
         );
+        if (decoded.length > desc.length) {
+          desc = decoded;
+        }
       }
       const titleRegex = new RegExp('"title"\\s*:\\s*"([^"]{2,})"');
       const titleFromState = stateStr.match(titleRegex);
@@ -96,11 +101,11 @@ function extractXhsData(html: string): { title: string; desc: string; imageUrls:
           );
         }
       }
-      // Extract image list from state
+      // Extract image list from state — skip avatars
       const urlRegex = new RegExp('"url"\\s*:\\s*"(https?://[^"]*xhscdn\\.com[^"]*?)"', 'gi');
       for (const m of stateStr.matchAll(urlRegex)) {
         const u = m[1].replace(/\\u002F/g, '/');
-        if (!seen.has(u)) {
+        if (!seen.has(u) && isContentImage(u)) {
           seen.add(u);
           imageUrls.push(u);
         }
