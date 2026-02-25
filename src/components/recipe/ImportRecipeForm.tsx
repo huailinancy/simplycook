@@ -48,6 +48,7 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
   const [difficulty, setDifficulty] = useState('');
   const [calories, setCalories] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
   const [tags, setTags] = useState('');
   const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: '', amount: '' }]);
   const [instructions, setInstructions] = useState<string[]>(['']);
@@ -67,6 +68,7 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       setDifficulty(initialData.difficulty || '');
       setCalories(initialData.calories?.toString() || '');
       setImageUrl(initialData.image_url || '');
+      setSourceUrl((initialData as any).source_url || '');
       setTags(initialData.tags?.join(', ') || '');
       setIngredients(
         initialData.ingredients?.length
@@ -166,6 +168,7 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       instructions: validInstructions,
       image_url: imageUrl,
       tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+      source_url: sourceUrl,
     });
   };
 
@@ -212,6 +215,19 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
             {autoFillError && (
               <p className="text-xs text-destructive">{autoFillError}</p>
             )}
+          </div>
+
+          {/* Source URL */}
+          <div className="space-y-2">
+            <Label htmlFor="sourceUrl">Source / Video Link</Label>
+            <Input
+              id="sourceUrl"
+              type="url"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+              placeholder="https://youtube.com/... or original recipe link"
+            />
+            <p className="text-xs text-muted-foreground">Save a link to the original video or recipe so you can revisit it later.</p>
           </div>
 
           {/* Basic Info */}
