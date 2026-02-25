@@ -30,6 +30,7 @@ export interface SupabaseRecipe {
   meal_type: string[] | null;
   cuisine: string | null;
   category: string | null;
+  category_id: string | null;
   prep_time: number | null;
   cook_time: number | null;
   difficulty: string | null;
@@ -255,7 +256,7 @@ export interface MealSlot {
   recipe: SupabaseRecipe | null;
 }
 
-export type RecipeSource = 'all' | 'saved' | 'my-recipes';
+export type RecipeSource = 'all' | 'saved' | 'my-recipes' | string; // string for category IDs
 
 export const DAYS_OF_WEEK = [
   'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'

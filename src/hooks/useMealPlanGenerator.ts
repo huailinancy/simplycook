@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { SupabaseRecipe, RecipeSource, MealSlot } from '@/types/recipe';
+import { SupabaseRecipe, MealSlot } from '@/types/recipe';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -10,60 +10,44 @@ export function useMealPlanGenerator() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Fetch recipes based on source
-  const fetchRecipesBySource = useCallback(async (source: RecipeSource): Promise<SupabaseRecipe[]> => {
+  // Fetch recipes by category ID
+  const fetchRecipesByCategory = useCallback(async (categoryId: string): Promise<SupabaseRecipe[]> => {
     try {
-      if (source === 'saved') {
-        if (!user) return [];
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('category_id', categoryId);
+      if (error) throw error;
+      return data as SupabaseRecipe[];
+    } catch (err) {
+      console.error('Error fetching recipes by category:', err);
+      return [];
+    }
+  }, [user]);
 
-        const { data: savedData, error: savedError } = await supabase
-          .from('saved_recipes')
-          .select('recipe_id')
-          .eq('user_id', user.id);
-
-        if (savedError) throw savedError;
-        if (!savedData || savedData.length === 0) return [];
-
-        const recipeIds = savedData.map(s => s.recipe_id);
-
-        const { data, error } = await supabase
-          .from('recipes')
-          .select('*')
-          .in('id', recipeIds);
-
-        if (error) throw error;
-        return data as SupabaseRecipe[];
+  // Fetch all user recipes (for recipe picker)
+  const fetchRecipesBySource = useCallback(async (source: string): Promise<SupabaseRecipe[]> => {
+    try {
+      if (!user) return [];
+      // If source is a UUID (category ID), fetch by category
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(source)) {
+        return fetchRecipesByCategory(source);
       }
-      else if (source === 'my-recipes') {
-        if (!user) return [];
-
-        const { data, error } = await supabase
-          .from('recipes')
-          .select('*')
-          .eq('user_id', user.id);
-
-        if (error) throw error;
-        return data as SupabaseRecipe[];
-      }
-      else {
-        // 'all' - fetch all recipes, filter client-side
-        const { data, error } = await supabase
-          .from('recipes')
-          .select('*');
-
-        if (error) throw error;
-        // Only show system recipes (user_id is null/undefined/empty)
-        return (data as SupabaseRecipe[]).filter(r =>
-          r.user_id === null ||
-          r.user_id === undefined ||
-          r.user_id === ''
-        );
-      }
+      // Fallback: fetch all user recipes
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('*')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data as SupabaseRecipe[];
     } catch (err) {
       console.error('Error fetching recipes:', err);
       return [];
     }
-  }, [user]);
+  }, [user, fetchRecipesByCategory]);
 
   // Smart shuffle - ensures variety by avoiding consecutive repeats
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -75,11 +59,11 @@ export function useMealPlanGenerator() {
     return shuffled;
   };
 
-  // Generate meal plan with prioritised sources
-  // sources[0] is primary — slots are filled from it first.
-  // sources[1..] supplement only when primary doesn't have enough unique recipes.
+  // Generate meal plan with prioritised category sources
+  // categoryIds[0] is primary — slots are filled from it first.
+  // categoryIds[1..] supplement only when primary doesn't have enough unique recipes.
   const generateMealPlan = useCallback(async (
-    sources: RecipeSource[],
+    categoryIds: string[],
     userPreferences?: { allergies?: string[]; dietPreferences?: string[]; flavorPreferences?: string[] },
     numberOfPersons: number = 2
   ): Promise<MealSlot[]> => {
@@ -90,15 +74,16 @@ export function useMealPlanGenerator() {
     const totalSlots = 7 * 2 * dishesPerMeal;
 
     try {
-      // 1. Fetch primary source
-      const primarySource = sources[0] ?? 'all';
-      const primaryRecipes = await fetchRecipesBySource(primarySource);
+      // 1. Fetch primary category
+      const primaryCategoryId = categoryIds[0];
+      if (!primaryCategoryId) throw new Error('Please select at least one category.');
+      const primaryRecipes = await fetchRecipesByCategory(primaryCategoryId);
 
-      // 2. Fetch supplementary sources (deduplicated against primary)
+      // 2. Fetch supplementary categories (deduplicated against primary)
       const seenIds = new Set(primaryRecipes.map(r => r.id));
       let supplementRecipes: SupabaseRecipe[] = [];
-      for (let i = 1; i < sources.length; i++) {
-        const extras = await fetchRecipesBySource(sources[i]);
+      for (let i = 1; i < categoryIds.length; i++) {
+        const extras = await fetchRecipesByCategory(categoryIds[i]);
         for (const r of extras) {
           if (!seenIds.has(r.id)) {
             seenIds.add(r.id);
@@ -108,9 +93,7 @@ export function useMealPlanGenerator() {
       }
 
       if (primaryRecipes.length === 0 && supplementRecipes.length === 0) {
-        const label = primarySource === 'all' ? 'the repository'
-          : primarySource === 'saved' ? 'your saved recipes' : 'your recipes';
-        throw new Error(`No recipes found in ${label}. Please add some recipes first.`);
+        throw new Error('No recipes found in the selected categories. Please add recipes to your categories first.');
       }
 
       // 3. Apply preference filtering (allergies) — fall back if filtering empties the pool
@@ -162,9 +145,7 @@ export function useMealPlanGenerator() {
         }
       }
 
-      const sourceLabel = sources.length > 1
-        ? `${sources[0] === 'my-recipes' ? 'My Recipes' : sources[0] === 'saved' ? 'Saved' : 'All'} (+ ${sources.length - 1} more)`
-        : sources[0] === 'my-recipes' ? 'My Recipes' : sources[0] === 'saved' ? 'Saved Recipes' : 'All Recipes';
+      const sourceLabel = `${categoryIds.length} ${categoryIds.length === 1 ? 'category' : 'categories'}`;
 
       toast({
         title: 'Meal plan generated!',
@@ -181,7 +162,7 @@ export function useMealPlanGenerator() {
     } finally {
       setIsGenerating(false);
     }
-  }, [fetchRecipesBySource, toast]);
+  }, [fetchRecipesByCategory, toast]);
 
   return {
     generateMealPlan,

@@ -41,11 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      recipe_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       recipes: {
         Row: {
           author: string | null
           calories: number | null
           category: string | null
+          category_id: string | null
           cook_time: number | null
           created_at: string | null
           cuisine: string | null
@@ -72,6 +97,7 @@ export type Database = {
           author?: string | null
           calories?: number | null
           category?: string | null
+          category_id?: string | null
           cook_time?: number | null
           created_at?: string | null
           cuisine?: string | null
@@ -98,6 +124,7 @@ export type Database = {
           author?: string | null
           calories?: number | null
           category?: string | null
+          category_id?: string | null
           cook_time?: number | null
           created_at?: string | null
           cuisine?: string | null
@@ -120,7 +147,15 @@ export type Database = {
           tags?: Json | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "recipes_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_recipes: {
         Row: {
