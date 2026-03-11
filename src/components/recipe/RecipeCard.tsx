@@ -112,6 +112,10 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1.5">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span>{prepTime} min</span>
+          </div>
+          <div className="flex items-center gap-1.5">
             <Flame className="h-4 w-4 text-spice" />
             <span>{calories} {language === 'zh' ? '卡' : 'cal'}</span>
           </div>
