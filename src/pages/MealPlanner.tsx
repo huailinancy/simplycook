@@ -206,7 +206,8 @@ export default function MealPlanner() {
   const { toast } = useToast();
   const { t, language } = useLanguage();
 
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const ALL_MENU_ID = '__all__';
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([ALL_MENU_ID]);
   const { categories } = useRecipeCategories();
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [showRecipePickerDialog, setShowRecipePickerDialog] = useState(false);
