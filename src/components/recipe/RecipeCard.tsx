@@ -165,6 +165,6 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
         )}
       </div>
     </article>
-    </Link>
+    </Wrapper>
   );
 }
