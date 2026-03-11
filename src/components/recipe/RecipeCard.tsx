@@ -19,7 +19,7 @@ interface RecipeCardProps {
   onSelect?: (recipeId: string) => void;
 }
 
-export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, saveCount }: RecipeCardProps) {
+export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, saveCount, selectable, isSelected, onSelect }: RecipeCardProps) {
   const calories = Math.round(recipe.calories / recipe.yield);
   const prepTime = recipe.totalTime || 30;
   const { user } = useAuth();
