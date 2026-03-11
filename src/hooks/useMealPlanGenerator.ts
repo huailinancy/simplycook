@@ -100,13 +100,15 @@ export function useMealPlanGenerator() {
   const generateMealPlan = useCallback(async (
     categoryIds: string[],
     userPreferences?: { allergies?: string[]; dietPreferences?: string[]; flavorPreferences?: string[] },
-    numberOfPersons: number = 2
+    numberOfPersons: number = 2,
+    mealTypes: ('lunch' | 'dinner')[] = ['lunch', 'dinner']
   ): Promise<MealSlot[]> => {
     setIsGenerating(true);
     setError(null);
 
     const dishesPerMeal = numberOfPersons;
-    const totalSlots = 7 * 2 * dishesPerMeal;
+    const mealsPerDay = mealTypes.length;
+    const totalSlots = 7 * mealsPerDay * dishesPerMeal;
 
     try {
       // 1. Determine primary source
