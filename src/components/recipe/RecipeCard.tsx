@@ -62,7 +62,17 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-
+        {/* Selection indicator */}
+        {selectable && (
+          <div className={cn(
+            "absolute top-3 left-3 z-10 transition-all",
+          )}>
+            <CheckCircle2 className={cn(
+              "h-6 w-6 drop-shadow-md",
+              isSelected ? "text-primary fill-primary-foreground" : "text-white/60"
+            )} />
+          </div>
+        )}
         {/* Save/Bookmark button - only visible for logged in users */}
         {user && (
           <Button
