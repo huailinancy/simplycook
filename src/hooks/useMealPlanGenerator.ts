@@ -203,7 +203,7 @@ export function useMealPlanGenerator() {
     } finally {
       setIsGenerating(false);
     }
-  }, [fetchRecipesByCategory, toast]);
+  }, [fetchRecipesByCategory, fetchAllUserRecipes, toast]);
 
   return {
     generateMealPlan,
