@@ -4,6 +4,8 @@ import { SupabaseRecipe, MealSlot } from '@/types/recipe';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
+const ALL_MENU_ID = '__all__';
+
 export function useMealPlanGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +25,22 @@ export function useMealPlanGenerator() {
       return data as SupabaseRecipe[];
     } catch (err) {
       console.error('Error fetching recipes by category:', err);
+      return [];
+    }
+  }, [user]);
+
+  // Fetch all user recipes (no category filter)
+  const fetchAllUserRecipes = useCallback(async (): Promise<SupabaseRecipe[]> => {
+    try {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('*')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data as SupabaseRecipe[];
+    } catch (err) {
+      console.error('Error fetching all user recipes:', err);
       return [];
     }
   }, [user]);
@@ -91,20 +109,26 @@ export function useMealPlanGenerator() {
     const totalSlots = 7 * 2 * dishesPerMeal;
 
     try {
-      // 1. Fetch primary category
-      const primaryCategoryId = categoryIds[0];
+      // 1. Determine primary source
+      const primaryCategoryId = categoryIds[0] || ALL_MENU_ID;
       if (!primaryCategoryId) throw new Error('Please select at least one category.');
-      const primaryRecipes = await fetchRecipesByCategory(primaryCategoryId);
+      const primaryRecipes = primaryCategoryId === ALL_MENU_ID
+        ? await fetchAllUserRecipes()
+        : await fetchRecipesByCategory(primaryCategoryId);
 
       // 2. Fetch supplementary categories (deduplicated against primary)
       const seenIds = new Set(primaryRecipes.map(r => r.id));
       let supplementRecipes: SupabaseRecipe[] = [];
       for (let i = 1; i < categoryIds.length; i++) {
-        const extras = await fetchRecipesByCategory(categoryIds[i]);
-        for (const r of extras) {
-          if (!seenIds.has(r.id)) {
-            seenIds.add(r.id);
-            supplementRecipes.push(r);
+        if (categoryIds[i] === ALL_MENU_ID) {
+          const allRecipes = await fetchAllUserRecipes();
+          for (const r of allRecipes) {
+            if (!seenIds.has(r.id)) { seenIds.add(r.id); supplementRecipes.push(r); }
+          }
+        } else {
+          const extras = await fetchRecipesByCategory(categoryIds[i]);
+          for (const r of extras) {
+            if (!seenIds.has(r.id)) { seenIds.add(r.id); supplementRecipes.push(r); }
           }
         }
       }
@@ -179,7 +203,7 @@ export function useMealPlanGenerator() {
     } finally {
       setIsGenerating(false);
     }
-  }, [fetchRecipesByCategory, toast]);
+  }, [fetchRecipesByCategory, fetchAllUserRecipes, toast]);
 
   return {
     generateMealPlan,
