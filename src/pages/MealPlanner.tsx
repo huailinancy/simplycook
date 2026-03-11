@@ -215,7 +215,8 @@ export default function MealPlanner() {
   const [availableRecipes, setAvailableRecipes] = useState<SupabaseRecipe[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [numberOfPersons, setNumberOfPersons] = useState(2);
+  const [lunchDishCount, setLunchDishCount] = useState(2);
+  const [dinnerDishCount, setDinnerDishCount] = useState(2);
   const [selectedMealTypes, setSelectedMealTypes] = useState<('lunch' | 'dinner')[]>(['dinner']);
 
   // Recipe picker filters
