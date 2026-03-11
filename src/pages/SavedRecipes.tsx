@@ -96,11 +96,20 @@ export default function SavedRecipes() {
     try {
       const ids = Array.from(selectedIds).map(id => parseInt(id));
 
-      // Update each recipe to published - need to do individually due to RLS
+      // Fetch user display name for author field
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .single();
+
+      const authorName = profile?.display_name || user.email?.split('@')[0] || 'User';
+
+      // Update each recipe to published with author name
       const promises = ids.map(id =>
         supabase
           .from('recipes')
-          .update({ is_published: true })
+          .update({ is_published: true, author: authorName })
           .eq('id', id)
       );
 
