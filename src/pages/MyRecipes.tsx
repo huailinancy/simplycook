@@ -12,11 +12,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, SupabaseRecipe, toAppRecipe } from '@/types/recipe';
-import { Import, Plus, Globe, Lock, Heart, Pencil, LogIn, CheckSquare, Download, Trash2, X, FileText, FileSpreadsheet, Images, FolderPlus, Folder, MoreHorizontal, Tag, GripVertical } from 'lucide-react';
+import { Import, Plus, Globe, Lock, Heart, Pencil, LogIn, CheckSquare, Download, Trash2, X, FileText, FileSpreadsheet, Images, FolderPlus, Folder, MoreHorizontal, Tag, GripVertical, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { downloadMultipleRecipesAsPdf, downloadMultipleRecipesAsCsv } from '@/lib/recipeDownload';
 import { BatchImportPhotos } from '@/components/recipe/BatchImportPhotos';
+import { RecipeImageDialog } from '@/components/recipe/RecipeImageDialog';
 import { useRecipeCategories } from '@/hooks/useRecipeCategories';
 import {
   DndContext,
@@ -118,6 +119,7 @@ export default function MyRecipes() {
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<SupabaseRecipe | null>(null);
+  const [photoEditRecipe, setPhotoEditRecipe] = useState<SupabaseRecipe | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBatchImport, setShowBatchImport] = useState(false);
@@ -767,6 +769,20 @@ export default function MyRecipes() {
             </div>
           )}
 
+          {/* Photo Edit Dialog */}
+          {photoEditRecipe && (
+            <RecipeImageDialog
+              recipeId={photoEditRecipe.id}
+              currentImageUrl={photoEditRecipe.image_url ?? null}
+              open={!!photoEditRecipe}
+              onOpenChange={(open) => { if (!open) setPhotoEditRecipe(null); }}
+              onUpdated={(newUrl) => {
+                setRecipes(prev => prev.map(r => r.id === photoEditRecipe.id ? { ...r, image_url: newUrl } : r));
+                setPhotoEditRecipe(null);
+              }}
+            />
+          )}
+
           {/* Edit Dialog */}
           <Dialog open={!!editingRecipe} onOpenChange={(open) => !open && setEditingRecipe(null)}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -898,6 +914,16 @@ export default function MyRecipes() {
                         >
                           <Pencil className="h-3 w-3 mr-1" />
                           {t('myRecipes.edit')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPhotoEditRecipe(recipe);
+                          }}
+                        >
+                          <Camera className="h-3 w-3" />
                         </Button>
                         <Button
                           size="sm"
