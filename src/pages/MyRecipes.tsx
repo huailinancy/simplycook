@@ -910,18 +910,8 @@ export default function MyRecipes() {
                       />
                     )}
 
-                    {/* Category badge */}
-                    {categoryName && (
-                      <div className="absolute top-3 right-3 z-10">
-                        <Badge variant="secondary" className="bg-background/90 backdrop-blur-sm text-[10px]">
-                          <Folder className="h-2.5 w-2.5 mr-1" />
-                          {categoryName}
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Public/Private badge below card content */}
-                    <div className="px-4 pb-3 flex items-center gap-2">
+                    {/* Badges below card content */}
+                    <div className="px-4 pb-3 flex flex-wrap items-center gap-2">
                       <Badge
                         variant={recipe.is_published ? "default" : "secondary"}
                         className={recipe.is_published ? "bg-herb text-herb-foreground" : ""}
@@ -938,6 +928,13 @@ export default function MyRecipes() {
                           </>
                         )}
                       </Badge>
+
+                      {categoryName && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          <Folder className="h-2.5 w-2.5 mr-1" />
+                          {categoryName}
+                        </Badge>
+                      )}
 
                       {recipe.is_published && recipe.save_count > 0 && (
                         <Badge variant="secondary">
