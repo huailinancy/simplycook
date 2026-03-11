@@ -109,10 +109,12 @@ export function useMealPlanGenerator() {
     const totalSlots = 7 * 2 * dishesPerMeal;
 
     try {
-      // 1. Fetch primary category
-      const primaryCategoryId = categoryIds[0];
+      // 1. Determine primary source
+      const primaryCategoryId = categoryIds[0] || ALL_MENU_ID;
       if (!primaryCategoryId) throw new Error('Please select at least one category.');
-      const primaryRecipes = await fetchRecipesByCategory(primaryCategoryId);
+      const primaryRecipes = primaryCategoryId === ALL_MENU_ID
+        ? await fetchAllUserRecipes()
+        : await fetchRecipesByCategory(primaryCategoryId);
 
       // 2. Fetch supplementary categories (deduplicated against primary)
       const seenIds = new Set(primaryRecipes.map(r => r.id));
