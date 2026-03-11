@@ -920,8 +920,8 @@ export default function MyRecipes() {
                       </div>
                     )}
 
-                    {/* Recipe controls overlay */}
-                    <div className="absolute top-0 left-0 right-0 p-3 flex justify-between items-start pointer-events-none">
+                    {/* Public/Private badge below card content */}
+                    <div className="px-4 pb-3 flex items-center gap-2">
                       <Badge
                         variant={recipe.is_published ? "default" : "secondary"}
                         className={recipe.is_published ? "bg-herb text-herb-foreground" : ""}
@@ -940,7 +940,7 @@ export default function MyRecipes() {
                       </Badge>
 
                       {recipe.is_published && recipe.save_count > 0 && (
-                        <Badge variant="secondary" className="bg-background/90 backdrop-blur-sm">
+                        <Badge variant="secondary">
                           <Heart className="h-3 w-3 mr-1 text-rose-500 fill-rose-500" />
                           {recipe.save_count}
                         </Badge>
