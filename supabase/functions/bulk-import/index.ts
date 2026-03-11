@@ -8,15 +8,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-/** Extract image URLs from raw HTML (same logic as scrape-recipe) */
+/** Extract image URLs from raw HTML, including XHS CDN URLs without file extensions */
 function extractImageUrls(html: string): string[] {
   const seen = new Set<string>();
   const imageUrls: string[] = [];
 
   const addImg = (u: string) => {
     if (!u || seen.has(u)) return;
-    if (/favicon|logo|icon|avatar|profile|badge|button/i.test(u)) return;
-    if (!/\.(jpg|jpeg|png|webp)/i.test(u) && !/\/img\//i.test(u)) return;
+    if (/favicon|logo|icon|avatar|profile|badge|button|watermark/i.test(u)) return;
+    const hasImageExt = /\.(jpg|jpeg|png|webp)/i.test(u);
+    const isXhsCdn = /xhscdn\.com|xiaohongshu\.com/i.test(u);
+    if (!hasImageExt && !isXhsCdn && !/\/img\//i.test(u)) return;
     seen.add(u);
     imageUrls.push(u);
   };
@@ -27,11 +29,23 @@ function extractImageUrls(html: string): string[] {
     html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
   if (ogMatch?.[1]) addImg(ogMatch[1]);
 
-  // Image URLs embedded in JS/JSON (XHS stores all post images here)
+  // Image URLs embedded in JS/JSON script tags
   const scriptContent = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)]
     .map(m => m[1])
     .join('\n');
+
+  // URLs with standard image extensions
   for (const m of scriptContent.matchAll(/"(https?:\/\/[^"]{10,}\.(jpg|jpeg|png|webp)[^"]*?)"/gi)) {
+    addImg(m[1]);
+  }
+
+  // XHS CDN URLs without extensions (e.g. sns-img-hw.xhscdn.com/spectrum/...)
+  for (const m of scriptContent.matchAll(/"(https?:\/\/[^"]*xhscdn\.com\/[^"]{15,})"/gi)) {
+    addImg(m[1]);
+  }
+
+  // Also check imageList / url patterns common in XHS __INITIAL_STATE__
+  for (const m of scriptContent.matchAll(/"url"\s*:\s*"(https?:\/\/[^"]{15,})"/gi)) {
     addImg(m[1]);
   }
 
