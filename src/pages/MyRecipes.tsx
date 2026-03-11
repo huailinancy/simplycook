@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { RecipeCard } from '@/components/recipe/RecipeCard';
 import { ImportRecipeForm } from '@/components/recipe/ImportRecipeForm';
+import { BulkImportDialog } from '@/components/recipe/BulkImportDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -258,7 +259,9 @@ export default function MyRecipes() {
             </p>
           </div>
 
-          <Dialog open={showForm} onOpenChange={setShowForm}>
+          <div className="flex gap-2">
+            <BulkImportDialog onSuccess={fetchMyRecipes} />
+            <Dialog open={showForm} onOpenChange={setShowForm}>
             <DialogTrigger asChild>
               <Button className="btn-primary-gradient border-0">
                 <Plus className="h-4 w-4 mr-2" />
@@ -274,6 +277,7 @@ export default function MyRecipes() {
               />
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Edit Dialog */}
