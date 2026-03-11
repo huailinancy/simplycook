@@ -51,6 +51,8 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
   const [difficulty, setDifficulty] = useState('');
   const [calories, setCalories] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageUploadPreview, setImageUploadPreview] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [sourceUrl, setSourceUrl] = useState('');
   const [author, setAuthor] = useState('');
   const [tags, setTags] = useState('');
@@ -139,6 +141,31 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
   const clearPhoto = () => {
     setUploadedPhoto(null);
     setPhotoPreview('');
+  };
+
+  const handleImageFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onload = ev => setImageUploadPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    setIsUploadingImage(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `user-${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from('recipe-images')
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('recipe-images').getPublicUrl(data.path);
+      setImageUrl(urlData.publicUrl);
+      setImageUploadPreview('');
+    } catch {
+      // keep local preview as fallback display only
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   // Check for duplicate recipe name
@@ -427,14 +454,51 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
             </div>
 
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="imageUrl">Image URL</Label>
-              <Input
-                id="imageUrl"
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-              />
+              <Label>Recipe Image</Label>
+              {/* Preview */}
+              {(imageUploadPreview || imageUrl) && (
+                <div className="relative w-full aspect-video rounded-lg overflow-hidden border bg-muted">
+                  <img
+                    src={imageUploadPreview || imageUrl}
+                    alt="Recipe preview"
+                    className="w-full h-full object-cover"
+                    onError={() => { setImageUrl(''); setImageUploadPreview(''); }}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-7 w-7 bg-background/80"
+                    onClick={() => { setImageUrl(''); setImageUploadPreview(''); }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {/* URL input + upload button */}
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  value={imageUrl}
+                  onChange={e => { setImageUrl(e.target.value); setImageUploadPreview(''); }}
+                  placeholder="https://example.com/image.jpg"
+                  className="flex-1 text-sm"
+                  disabled={isUploadingImage}
+                />
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageFileSelect}
+                    disabled={isUploadingImage}
+                  />
+                  <div className="inline-flex items-center justify-center h-10 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors gap-1.5">
+                    {isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    {isUploadingImage ? 'Uploading…' : 'Upload'}
+                  </div>
+                </label>
+              </div>
             </div>
 
             <div className="space-y-2 sm:col-span-2">
