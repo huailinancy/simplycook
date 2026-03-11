@@ -20,45 +20,44 @@ export default function SavedRecipes() {
   const { toast } = useToast();
   const { t, language } = useLanguage();
 
+  const fetchSavedRecipeDetails = async () => {
+    if (!user || savedRecipes.length === 0) {
+      setRecipes([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const recipeIds = savedRecipes.map(sr => sr.recipe_id);
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('*')
+        .in('id', recipeIds);
+
+      if (error) throw error;
+
+      const supabaseRecipes = data as SupabaseRecipe[];
+      const appRecipes = supabaseRecipes.map(r => toAppRecipe(r, language));
+
+      const orderedRecipes = recipeIds
+        .map(id => appRecipes.find(r => r.uri === id.toString()))
+        .filter((r): r is Recipe => r !== undefined);
+
+      setRecipes(orderedRecipes);
+    } catch (error) {
+      console.error('Error fetching saved recipes:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load saved recipes',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchSavedRecipeDetails = async () => {
-      if (!user || savedRecipes.length === 0) {
-        setRecipes([]);
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const recipeIds = savedRecipes.map(sr => sr.recipe_id);
-        const { data, error } = await supabase
-          .from('recipes')
-          .select('*')
-          .in('id', recipeIds);
-
-        if (error) throw error;
-
-        const supabaseRecipes = data as SupabaseRecipe[];
-        const appRecipes = supabaseRecipes.map(r => toAppRecipe(r, language));
-
-        // Sort by save order (most recently saved first)
-        const orderedRecipes = recipeIds
-          .map(id => appRecipes.find(r => r.uri === id.toString()))
-          .filter((r): r is Recipe => r !== undefined);
-
-        setRecipes(orderedRecipes);
-      } catch (error) {
-        console.error('Error fetching saved recipes:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load saved recipes',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchSavedRecipeDetails();
   }, [user, savedRecipes, toast, language]);
 
