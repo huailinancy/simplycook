@@ -31,7 +31,8 @@ import {
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RecipeSource, SupabaseRecipe, DAYS_OF_WEEK, getLocalizedRecipe } from '@/types/recipe';
+import { SupabaseRecipe, DAYS_OF_WEEK, getLocalizedRecipe } from '@/types/recipe';
+import { useRecipeCategories } from '@/hooks/useRecipeCategories';
 import { useToast } from '@/hooks/use-toast';
 import { useMealPlan } from '@/contexts/MealPlanContext';
 import { useMealPlanGenerator } from '@/hooks/useMealPlanGenerator';
@@ -205,7 +206,8 @@ export default function MealPlanner() {
   const { toast } = useToast();
   const { t, language } = useLanguage();
 
-  const [sourcePriority, setSourcePriority] = useState<RecipeSource[]>(['all']);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const { categories } = useRecipeCategories();
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [showRecipePickerDialog, setShowRecipePickerDialog] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ dayOfWeek: number; mealType: 'lunch' | 'dinner' } | null>(null);
@@ -247,7 +249,7 @@ export default function MealPlanner() {
 
   const handleGenerateMealPlan = async () => {
     const slots = await generateMealPlan(
-      sourcePriority,
+      selectedCategoryIds,
       {
         allergies: userProfile?.allergies,
         dietPreferences: userProfile?.diet_preferences,
@@ -274,7 +276,7 @@ export default function MealPlanner() {
     setPickerCuisine('');
     setPickerPrepTime('');
 
-    const recipes = await fetchRecipesBySource(sourcePriority[0] ?? 'all');
+    const recipes = await fetchRecipesBySource(selectedCategoryIds[0] ?? 'all');
     setAvailableRecipes(recipes);
     setRecipesLoading(false);
   };
@@ -449,52 +451,56 @@ export default function MealPlanner() {
 
                   {user && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">{t('mealPlanner.recipeSource')}</label>
+                      <label className="text-sm font-medium">{language === 'zh' ? '选择分类' : 'Select Categories'}</label>
                       <p className="text-xs text-muted-foreground">
-                        Click sources in priority order. The primary source fills the plan first; others supplement when needed.
+                        {language === 'zh'
+                          ? '按优先级顺序点击分类。主分类优先填满计划，其他分类补充。'
+                          : 'Click categories in priority order. The primary category fills the plan first; others supplement when needed.'}
                       </p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {([
-                          { value: 'all' as RecipeSource, label: t('mealPlanner.allRecipes'), icon: Globe },
-                          { value: 'saved' as RecipeSource, label: t('mealPlanner.savedRecipes'), icon: Heart },
-                          { value: 'my-recipes' as RecipeSource, label: t('mealPlanner.myRecipes'), icon: Import },
-                        ] as const).map(({ value, label, icon: Icon }) => {
-                          const rank = sourcePriority.indexOf(value);
-                          const selected = rank !== -1;
-                          return (
-                            <button
-                              key={value}
-                              type="button"
-                              onClick={() => {
-                                if (selected) {
-                                  // keep at least one source selected
-                                  if (sourcePriority.length > 1)
-                                    setSourcePriority(prev => prev.filter(s => s !== value));
-                                } else {
-                                  setSourcePriority(prev => [...prev, value]);
-                                }
-                              }}
-                              className={cn(
-                                'relative flex flex-col items-center gap-1 p-3 rounded-lg border-2 text-xs transition-colors',
-                                selected
-                                  ? 'border-primary bg-primary/5 text-primary'
-                                  : 'border-border hover:border-primary/40 text-muted-foreground'
-                              )}
-                            >
-                              {selected && (
-                                <span className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                                  {rank + 1}
-                                </span>
-                              )}
-                              <Icon className="h-4 w-4" />
-                              <span className="font-medium text-center leading-tight">{label}</span>
-                              {selected && rank === 0 && (
-                                <span className="text-[10px] text-primary/70">Primary</span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {categories.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">
+                          {language === 'zh'
+                            ? '您还没有创建分类。请先在"我的食谱"页面创建分类。'
+                            : 'No categories yet. Create categories in My Recipes first.'}
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {categories.map((cat) => {
+                            const rank = selectedCategoryIds.indexOf(cat.id);
+                            const selected = rank !== -1;
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => {
+                                  if (selected) {
+                                    if (selectedCategoryIds.length > 1)
+                                      setSelectedCategoryIds(prev => prev.filter(id => id !== cat.id));
+                                  } else {
+                                    setSelectedCategoryIds(prev => [...prev, cat.id]);
+                                  }
+                                }}
+                                className={cn(
+                                  'relative flex flex-col items-center gap-1 p-3 rounded-lg border-2 text-xs transition-colors',
+                                  selected
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-border hover:border-primary/40 text-muted-foreground'
+                                )}
+                              >
+                                {selected && (
+                                  <span className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                                    {rank + 1}
+                                  </span>
+                                )}
+                                <span className="font-medium text-center leading-tight">{cat.name}</span>
+                                {selected && rank === 0 && (
+                                  <span className="text-[10px] text-primary/70">{language === 'zh' ? '主要' : 'Primary'}</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
 

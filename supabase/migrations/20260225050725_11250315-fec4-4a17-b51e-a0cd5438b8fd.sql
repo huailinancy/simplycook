@@ -1,0 +1,1 @@
+ALTER TABLE public.recipes ADD COLUMN author text DEFAULT NULL;

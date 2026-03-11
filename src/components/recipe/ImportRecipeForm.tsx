@@ -5,9 +5,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Save, Loader2, Wand2 } from 'lucide-react';
+import { Plus, Trash2, Save, Loader2, Wand2, Upload, X, AlertTriangle } from 'lucide-react';
 import { CUISINE_TYPES, MEAL_TYPES, SupabaseRecipe } from '@/types/recipe';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Ingredient {
   name: string;
@@ -27,6 +29,8 @@ interface RecipeFormData {
   instructions: string[];
   image_url: string;
   tags: string[];
+  source_url: string;
+  author: string;
 }
 
 interface ImportRecipeFormProps {
@@ -47,12 +51,20 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
   const [difficulty, setDifficulty] = useState('');
   const [calories, setCalories] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [author, setAuthor] = useState('');
   const [tags, setTags] = useState('');
   const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: '', amount: '' }]);
   const [instructions, setInstructions] = useState<string[]>(['']);
   const [urlInput, setUrlInput] = useState('');
+  const [uploadedPhoto, setUploadedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
   const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [autoFillError, setAutoFillError] = useState('');
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+
+  const { user } = useAuth();
+  const { language } = useLanguage();
 
   // Populate form with initial data when editing
   useEffect(() => {
@@ -66,6 +78,8 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       setDifficulty(initialData.difficulty || '');
       setCalories(initialData.calories?.toString() || '');
       setImageUrl(initialData.image_url || '');
+      setSourceUrl((initialData as any).source_url || '');
+      setAuthor((initialData as any).author || '');
       setTags(initialData.tags?.join(', ') || '');
       setIngredients(
         initialData.ingredients?.length
@@ -112,20 +126,62 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
     setInstructions(updated);
   };
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedPhoto(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    setAutoFillError('');
+  };
+
+  const clearPhoto = () => {
+    setUploadedPhoto(null);
+    setPhotoPreview('');
+  };
+
+  // Check for duplicate recipe name
+  const checkDuplicate = async (recipeName: string) => {
+    if (!user || !recipeName) return;
+    try {
+      const { data } = await supabase
+        .from('recipes')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .ilike('name', recipeName)
+        .limit(1);
+      if (data && data.length > 0) {
+        setDuplicateWarning(
+          language === 'zh'
+            ? `已存在同名食谱「${data[0].name}」，你仍然可以保存。`
+            : `A recipe named "${data[0].name}" already exists. You can still save it.`
+        );
+      } else {
+        setDuplicateWarning(null);
+      }
+    } catch { /* ignore */ }
+  };
+
   const handleAutoFill = async () => {
     const url = urlInput.trim();
-    if (!url) return;
+    if (!url && !uploadedPhoto) return;
     setIsAutoFilling(true);
     setAutoFillError('');
+    setDuplicateWarning(null);
     try {
-      const { data, error } = await supabase.functions.invoke('scrape-recipe', {
-        body: { url },
-      });
+      let body: any = {};
+      if (uploadedPhoto && photoPreview) {
+        body = { imageBase64: photoPreview };
+      } else {
+        body = { url };
+      }
+      const { data, error } = await supabase.functions.invoke('scrape-recipe', { body });
       if (error) throw new Error(error.message);
       const r = data?.recipe;
       if (!r) throw new Error('No recipe data returned');
 
-      if (r.name) setName(r.name);
+      if (r.name) { setName(r.name); await checkDuplicate(r.name); }
       if (r.description) setDescription(r.description);
       if (r.cuisine && CUISINE_TYPES.includes(r.cuisine)) setCuisine(r.cuisine);
       if (r.meal_type) setMealType([r.meal_type]);
@@ -134,13 +190,15 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       if (r.difficulty) setDifficulty(r.difficulty);
       if (r.calories != null) setCalories(String(r.calories));
       if (r.image_url) setImageUrl(r.image_url);
+      if (r.author) setAuthor(r.author);
+      if (!sourceUrl && url) setSourceUrl(url);
       if (Array.isArray(r.tags) && r.tags.length) setTags(r.tags.join(', '));
       if (Array.isArray(r.ingredients) && r.ingredients.length)
         setIngredients(r.ingredients.map((i: any) => ({ name: String(i.name ?? ''), amount: String(i.amount ?? '') })));
       if (Array.isArray(r.instructions) && r.instructions.length)
         setInstructions(r.instructions.map((s: any) => String(s)));
     } catch (err: any) {
-      setAutoFillError(err?.message ?? 'Failed to extract recipe from URL');
+      setAutoFillError(err?.message ?? 'Failed to extract recipe');
     } finally {
       setIsAutoFilling(false);
     }
@@ -165,6 +223,8 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       instructions: validInstructions,
       image_url: imageUrl,
       tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+      source_url: sourceUrl,
+      author,
     });
   };
 
@@ -180,25 +240,37 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* URL Auto-fill */}
-          <div className="space-y-2 rounded-lg border border-dashed p-4 bg-muted/30">
-            <Label className="text-sm font-medium">Auto-fill from URL</Label>
+          {/* URL / Photo Auto-fill */}
+          <div className="space-y-3 rounded-lg border border-dashed p-4 bg-muted/30">
+            <Label className="text-sm font-medium">Auto-fill from URL or Photo</Label>
             <p className="text-xs text-muted-foreground">
-              Paste a recipe page URL (e.g. Xiaohongshu, food blogs) and we'll extract the details automatically.
+              Paste a recipe URL or upload a photo of a recipe, then click Auto-fill to extract details.
             </p>
             <div className="flex gap-2">
               <Input
                 value={urlInput}
-                onChange={e => setUrlInput(e.target.value)}
+                onChange={e => { setUrlInput(e.target.value); if (uploadedPhoto) clearPhoto(); }}
                 placeholder="https://..."
                 className="flex-1 text-sm"
-                disabled={isAutoFilling}
+                disabled={isAutoFilling || !!uploadedPhoto}
               />
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoSelect}
+                  disabled={isAutoFilling}
+                />
+                <div className="inline-flex items-center justify-center h-10 px-3 rounded-md border border-input bg-background text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
+                  <Upload className="h-4 w-4" />
+                </div>
+              </label>
               <Button
                 type="button"
                 variant="secondary"
                 onClick={handleAutoFill}
-                disabled={!urlInput.trim() || isAutoFilling}
+                disabled={(!urlInput.trim() && !uploadedPhoto) || isAutoFilling}
               >
                 {isAutoFilling ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -208,22 +280,61 @@ export function ImportRecipeForm({ onSubmit, isSubmitting, onCancel, initialData
                 <span className="ml-1">{isAutoFilling ? 'Extracting…' : 'Auto-fill'}</span>
               </Button>
             </div>
+            {uploadedPhoto && photoPreview && (
+              <div className="flex items-center gap-2 mt-1">
+                <img src={photoPreview} alt="Upload preview" className="h-16 w-16 object-cover rounded-md border" />
+                <span className="text-xs text-muted-foreground flex-1 truncate">{uploadedPhoto.name}</span>
+                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={clearPhoto}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
             {autoFillError && (
               <p className="text-xs text-destructive">{autoFillError}</p>
             )}
           </div>
 
+          {/* Source URL */}
+          <div className="space-y-2">
+            <Label htmlFor="sourceUrl">Source / Video Link</Label>
+            <Input
+              id="sourceUrl"
+              type="url"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+              placeholder="https://youtube.com/... or original recipe link"
+            />
+            <p className="text-xs text-muted-foreground">Save a link to the original video or recipe so you can revisit it later.</p>
+          </div>
+
+          {/* Author */}
+          <div className="space-y-2">
+            <Label htmlFor="author">Author / Creator</Label>
+            <Input
+              id="author"
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              placeholder="Original recipe creator name"
+            />
+          </div>
+
           {/* Basic Info */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="name">Recipe Name *</Label>
+              <Label htmlFor="name">{language === 'zh' ? '食谱名称 *' : 'Recipe Name *'}</Label>
               <Input
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Grandma's Apple Pie"
+                onChange={(e) => { setName(e.target.value); setDuplicateWarning(null); }}
+                placeholder={language === 'zh' ? '例如：红烧肉' : "e.g., Grandma's Apple Pie"}
                 required
               />
+              {duplicateWarning && (
+                <div className="flex items-start gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-sm">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <span className="text-amber-700 dark:text-amber-400">{duplicateWarning}</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2 sm:col-span-2">

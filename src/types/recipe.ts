@@ -26,10 +26,11 @@ export interface SupabaseRecipe {
   name: string;
   english_name: string | null;
   description: string | null;
-  english_description: string | null;
+  english_description?: string | null;
   meal_type: string[] | null;
   cuisine: string | null;
   category: string | null;
+  category_id: string | null;
   prep_time: number | null;
   cook_time: number | null;
   difficulty: string | null;
@@ -54,10 +55,11 @@ export interface SupabaseRecipe {
   tags: string[] | null;
   image_url: string | null;
   created_at: string | null;
-  // User-imported recipe fields
   user_id: string | null;
   is_published: boolean;
   save_count: number;
+  source_url?: string | null;
+  author?: string | null;
 }
 
 // Helper to get localized recipe content
@@ -79,7 +81,7 @@ export function getLocalizedRecipe(recipe: SupabaseRecipe, language: 'en' | 'zh'
 }
 
 // Convert Supabase recipe to app Recipe format
-export function toAppRecipe(sr: SupabaseRecipe, language: 'en' | 'zh' = 'zh'): Recipe {
+export function toAppRecipe(sr: SupabaseRecipe, language: 'en' | 'zh' = 'zh', authorName?: string): Recipe {
   const localized = getLocalizedRecipe(sr, language);
   const ingredients = localized.ingredients || [];
 
@@ -87,7 +89,7 @@ export function toAppRecipe(sr: SupabaseRecipe, language: 'en' | 'zh' = 'zh'): R
     uri: sr.id.toString(),
     label: localized.name || sr.name,
     image: sr.image_url || '/placeholder-recipe.jpg',
-    source: 'SimplyCook',
+    source: sr.author || authorName || (sr.user_id ? (language === 'zh' ? '用户创作' : 'User') : 'SimplyCook'),
     url: '#',
     yield: 2,
     dietLabels: sr.tags?.slice(0, 3) || [],
@@ -254,7 +256,7 @@ export interface MealSlot {
   recipe: SupabaseRecipe | null;
 }
 
-export type RecipeSource = 'all' | 'saved' | 'my-recipes';
+export type RecipeSource = 'all' | 'saved' | 'my-recipes' | string; // string for category IDs
 
 export const DAYS_OF_WEEK = [
   'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'

@@ -26,7 +26,7 @@ const translations: Record<Language, Record<string, string>> = {
     'home.subtitle': 'Plan your meals, generate grocery lists, and cook with confidence',
     'home.exploreRecipes': 'Explore Recipes',
     'home.startPlanning': 'Start Planning',
-    'home.recipeCompanion': 'Your Recipe Companion',
+    'home.recipeCompanion': 'Your Meal Plan Companion',
     'home.heroTitle1': 'Cook with',
     'home.heroTitle2': 'Ease',
     'home.heroTitle3': 'Every Single Day',
@@ -230,10 +230,10 @@ const translations: Record<Language, Record<string, string>> = {
     'home.subtitle': '规划您的膳食，生成购物清单，轻松烹饪',
     'home.exploreRecipes': '浏览食谱',
     'home.startPlanning': '开始规划',
-    'home.recipeCompanion': '您的食谱伴侣',
-    'home.heroTitle1': '每天',
-    'home.heroTitle2': '轻松',
-    'home.heroTitle3': '下厨',
+    'home.recipeCompanion': '您的膳食计划伴侣',
+    'home.heroTitle1': '轻松下厨',
+    'home.heroTitle2': '',
+    'home.heroTitle3': '每一天',
     'home.heroDesc': '发现美味食谱，规划膳食，生成购物清单——一站式解决。您的厨房之旅从这里开始。',
     'home.planWeek': '规划您的一周',
     'home.curatedRecipes': '精选食谱',
@@ -699,7 +699,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback((key: string): string => {
-    return translations[language][key] || key;
+    const val = translations[language][key];
+    return val !== undefined ? val : key;
   }, [language]);
 
   return (

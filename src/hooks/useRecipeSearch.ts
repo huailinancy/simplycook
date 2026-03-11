@@ -44,7 +44,8 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
         query = query.contains('meal_type', [filters.mealType.toLowerCase()]);
       }
 
-      // Apply sorting
+      // Always sort recipes with images first, then apply user sort
+      // Recipes with null/empty image_url or wikimedia URLs go to the end
       switch (sort) {
         case 'popular':
           query = query.order('save_count', { ascending: false, nullsFirst: false });
@@ -93,6 +94,18 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
           }
         });
       }
+
+      // Sort: recipes with valid (non-wikimedia) images first
+      const hasValidImage = (r: SupabaseRecipe) => {
+        if (!r.image_url) return false;
+        if (r.image_url.includes('wikimedia') || r.image_url.includes('wikipedia')) return false;
+        return true;
+      };
+      fetchedRecipes.sort((a, b) => {
+        const aHas = hasValidImage(a) ? 0 : 1;
+        const bHas = hasValidImage(b) ? 0 : 1;
+        return aHas - bHas;
+      });
 
       const appRecipes = fetchedRecipes.map(r => toAppRecipe(r, language));
 

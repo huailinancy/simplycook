@@ -1,0 +1,1 @@
+ALTER TABLE public.recipes ADD COLUMN source_url text DEFAULT NULL;
