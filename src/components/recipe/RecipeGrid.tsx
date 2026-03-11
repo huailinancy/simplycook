@@ -41,6 +41,9 @@ export function RecipeGrid({ recipes, isLoading, onAddToMealPlan, mealPlanRecipe
             recipe={recipe}
             onAddToMealPlan={onAddToMealPlan}
             isInMealPlan={mealPlanRecipeIds.includes(recipe.uri)}
+            selectable={selectable}
+            isSelected={selectedIds?.has(recipe.uri)}
+            onSelect={onSelect}
           />
         </div>
       ))}
