@@ -260,7 +260,7 @@ export default function MealPlanner() {
         dietPreferences: userProfile?.diet_preferences,
         flavorPreferences: userProfile?.flavor_preferences,
       },
-      numberOfPersons,
+      { lunch: lunchDishCount, dinner: dinnerDishCount },
       selectedMealTypes
     );
 
