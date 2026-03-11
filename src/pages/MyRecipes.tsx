@@ -538,7 +538,7 @@ export default function MyRecipes() {
 
               <Button variant="outline" onClick={() => setShowBatchImport(true)}>
                 <Images className="h-4 w-4 mr-2" />
-                {language === 'zh' ? '批量导入' : 'Batch Import'}
+                {language === 'zh' ? '图片导入' : 'Photo Import'}
               </Button>
 
               <Dialog open={showForm} onOpenChange={setShowForm}>
@@ -558,6 +558,8 @@ export default function MyRecipes() {
                 </DialogContent>
               </Dialog>
 
+              <BulkImportDialog onSuccess={fetchMyRecipes} />
+
               <Dialog open={showBatchImport} onOpenChange={setShowBatchImport}>
                 <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
                   <BatchImportPhotos
@@ -566,8 +568,6 @@ export default function MyRecipes() {
                   />
                 </DialogContent>
               </Dialog>
-
-              <BulkImportDialog onSuccess={fetchMyRecipes} />
             </div>
           </div>
 

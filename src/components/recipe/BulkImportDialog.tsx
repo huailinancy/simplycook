@@ -143,7 +143,7 @@ export function BulkImportDialog({ onSuccess }: BulkImportDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetState(); }}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button className="btn-primary-gradient border-0 gap-2">
           <Layers className="h-4 w-4" />
           批量导入
         </Button>
