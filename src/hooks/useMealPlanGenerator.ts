@@ -120,11 +120,15 @@ export function useMealPlanGenerator() {
       const seenIds = new Set(primaryRecipes.map(r => r.id));
       let supplementRecipes: SupabaseRecipe[] = [];
       for (let i = 1; i < categoryIds.length; i++) {
-        const extras = await fetchRecipesByCategory(categoryIds[i]);
-        for (const r of extras) {
-          if (!seenIds.has(r.id)) {
-            seenIds.add(r.id);
-            supplementRecipes.push(r);
+        if (categoryIds[i] === ALL_MENU_ID) {
+          const allRecipes = await fetchAllUserRecipes();
+          for (const r of allRecipes) {
+            if (!seenIds.has(r.id)) { seenIds.add(r.id); supplementRecipes.push(r); }
+          }
+        } else {
+          const extras = await fetchRecipesByCategory(categoryIds[i]);
+          for (const r of extras) {
+            if (!seenIds.has(r.id)) { seenIds.add(r.id); supplementRecipes.push(r); }
           }
         }
       }
