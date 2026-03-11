@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { RecipeFilters } from '@/components/recipe/RecipeFilters';
 import { SearchFilters, Recipe } from '@/types/recipe';
 import { useRecipeSearch, SortOption } from '@/hooks/useRecipeSearch';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -13,40 +13,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpDown, Globe, BookOpen } from 'lucide-react';
+import { ArrowUpDown, Globe, Search } from 'lucide-react';
 
 export default function Recipes() {
   const [filters, setFilters] = useState<SearchFilters>({ query: '' });
-  const [activeTab, setActiveTab] = useState<'system' | 'community'>('system');
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
-  const systemSearch = useRecipeSearch({ source: 'system' });
   const communitySearch = useRecipeSearch({ source: 'community' });
 
-  const active = activeTab === 'system' ? systemSearch : communitySearch;
-
-  // Load on mount and tab switch
   useEffect(() => {
-    active.searchRecipes({ query: '' });
-  }, [activeTab]);
+    communitySearch.searchRecipes({ query: '' });
+  }, []);
 
-  // Auto-search when filters change
-  const filtersKey = `${filters.cuisineType || ''}-${filters.mealType || ''}-${filters.time || ''}`;
+  // Auto-search when query changes
   useEffect(() => {
-    active.searchRecipes(filters);
-  }, [filtersKey]);
+    communitySearch.searchRecipes(filters);
+  }, [filters.query]);
 
   const handleSearch = () => {
-    active.searchRecipes(filters);
+    communitySearch.searchRecipes(filters);
   };
 
   const handleLoadMore = () => {
-    active.loadMore(filters);
+    communitySearch.loadMore(filters);
   };
 
   const handleSortChange = (value: SortOption) => {
-    active.changeSortBy(filters, value);
+    communitySearch.changeSortBy(filters, value);
   };
 
   const handleAddToMealPlan = (recipe: Recipe) => {
@@ -56,60 +50,53 @@ export default function Recipes() {
     });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearch();
+  };
+
   return (
     <Layout>
       <div className="container py-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">
-            {t('recipes.title')}
+          <h1 className="font-display text-3xl md:text-4xl font-bold mb-2 flex items-center gap-2">
+            <Globe className="h-7 w-7" />
+            {language === 'zh' ? '社区发布' : 'Community Recipes'}
           </h1>
           <p className="text-muted-foreground">
-            {t('recipes.subtitle')}
+            {language === 'zh' ? '浏览社区用户发布的菜谱' : 'Browse recipes published by the community'}
           </p>
         </div>
 
-        {/* Tab toggle */}
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant={activeTab === 'system' ? 'default' : 'outline'}
-            className="gap-2"
-            onClick={() => setActiveTab('system')}
-          >
-            <BookOpen className="h-4 w-4" />
-            {t('recipes.title')}
+        {/* Search bar */}
+        <div className="flex gap-2 mb-8">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={language === 'zh' ? '搜索社区菜谱…' : 'Search community recipes…'}
+              value={filters.query}
+              onChange={(e) => setFilters({ ...filters, query: e.target.value })}
+              onKeyDown={handleKeyDown}
+              className="pl-10 h-12 text-base bg-card border-border/50 focus:border-primary"
+            />
+          </div>
+          <Button onClick={handleSearch} className="h-12 px-6 btn-primary-gradient border-0">
+            {t('recipes.search')}
           </Button>
-          <Button
-            variant={activeTab === 'community' ? 'default' : 'outline'}
-            className="gap-2"
-            onClick={() => setActiveTab('community')}
-          >
-            <Globe className="h-4 w-4" />
-            Community
-          </Button>
-        </div>
-
-        {/* Filters */}
-        <div className="mb-8">
-          <RecipeFilters
-            filters={filters}
-            onFiltersChange={setFilters}
-            onSearch={handleSearch}
-          />
         </div>
 
         {/* Sort and Results info */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="text-muted-foreground">
-            {active.totalResults > 0 && (
-              <span>{t('recipes.showing')} {active.recipes.length} {t('recipes.of')} {active.totalResults}</span>
+            {communitySearch.totalResults > 0 && (
+              <span>{t('recipes.showing')} {communitySearch.recipes.length} {t('recipes.of')} {communitySearch.totalResults}</span>
             )}
           </div>
 
           <div className="flex items-center gap-2">
             <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{t('recipes.sortBy')}:</span>
-            <Select value={active.sortBy} onValueChange={handleSortChange}>
+            <Select value={communitySearch.sortBy} onValueChange={handleSortChange}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue />
               </SelectTrigger>
@@ -124,15 +111,15 @@ export default function Recipes() {
 
         {/* Results */}
         <RecipeGridWithSaveCount
-          recipes={active.recipes}
-          isLoading={active.isLoading}
+          recipes={communitySearch.recipes}
+          isLoading={communitySearch.isLoading}
           onAddToMealPlan={handleAddToMealPlan}
-          getSaveCount={active.getSaveCount}
-          emptyMessage={activeTab === 'community' ? 'No community recipes yet. Publish your recipes to share them!' : undefined}
+          getSaveCount={communitySearch.getSaveCount}
+          emptyMessage={language === 'zh' ? '暂无社区菜谱。发布你的菜谱来分享吧！' : 'No community recipes yet. Publish your recipes to share them!'}
         />
 
         {/* Load More */}
-        {active.hasMore && !active.isLoading && (
+        {communitySearch.hasMore && !communitySearch.isLoading && (
           <div className="flex justify-center mt-8">
             <Button onClick={handleLoadMore} variant="outline" size="lg">
               {t('recipes.loadMore')}
