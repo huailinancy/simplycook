@@ -4,6 +4,8 @@ import { SupabaseRecipe, MealSlot } from '@/types/recipe';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
+const ALL_MENU_ID = '__all__';
+
 export function useMealPlanGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
