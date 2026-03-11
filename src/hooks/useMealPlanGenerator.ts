@@ -178,13 +178,11 @@ export function useMealPlanGenerator() {
       const mealSlots: MealSlot[] = [];
       let poolIndex = 0;
       for (let day = 0; day < 7; day++) {
-        for (let i = 0; i < dishesPerMeal; i++) {
-          mealSlots.push({ dayOfWeek: day, mealType: 'lunch', recipe: recipePool[poolIndex % recipePool.length] });
-          poolIndex++;
-        }
-        for (let i = 0; i < dishesPerMeal; i++) {
-          mealSlots.push({ dayOfWeek: day, mealType: 'dinner', recipe: recipePool[poolIndex % recipePool.length] });
-          poolIndex++;
+        for (const mt of mealTypes) {
+          for (let i = 0; i < dishesPerMeal; i++) {
+            mealSlots.push({ dayOfWeek: day, mealType: mt, recipe: recipePool[poolIndex % recipePool.length] });
+            poolIndex++;
+          }
         }
       }
 
