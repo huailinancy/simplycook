@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { RecipeFilters } from '@/components/recipe/RecipeFilters';
-import { RecipeGrid } from '@/components/recipe/RecipeGrid';
 import { SearchFilters, Recipe } from '@/types/recipe';
 import { useRecipeSearch, SortOption } from '@/hooks/useRecipeSearch';
 import { useToast } from '@/hooks/use-toast';
@@ -14,35 +13,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Globe, BookOpen } from 'lucide-react';
 
 export default function Recipes() {
   const [filters, setFilters] = useState<SearchFilters>({ query: '' });
-  const { recipes, supabaseRecipes, isLoading, totalResults, hasMore, sortBy, searchRecipes, loadMore, changeSortBy, getSaveCount } = useRecipeSearch();
+  const [activeTab, setActiveTab] = useState<'system' | 'community'>('system');
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  // Load initial recipes on mount
-  useEffect(() => {
-    searchRecipes({ query: '' });
-  }, []);
+  const systemSearch = useRecipeSearch({ source: 'system' });
+  const communitySearch = useRecipeSearch({ source: 'community' });
 
-  // Auto-search when any filter changes
+  const active = activeTab === 'system' ? systemSearch : communitySearch;
+
+  // Load on mount and tab switch
+  useEffect(() => {
+    active.searchRecipes({ query: '' });
+  }, [activeTab]);
+
+  // Auto-search when filters change
   const filtersKey = `${filters.cuisineType || ''}-${filters.mealType || ''}-${filters.time || ''}`;
   useEffect(() => {
-    searchRecipes(filters);
+    active.searchRecipes(filters);
   }, [filtersKey]);
 
   const handleSearch = () => {
-    searchRecipes(filters);
+    active.searchRecipes(filters);
   };
 
   const handleLoadMore = () => {
-    loadMore(filters);
+    active.loadMore(filters);
   };
 
   const handleSortChange = (value: SortOption) => {
-    changeSortBy(filters, value);
+    active.changeSortBy(filters, value);
   };
 
   const handleAddToMealPlan = (recipe: Recipe) => {
@@ -56,13 +60,33 @@ export default function Recipes() {
     <Layout>
       <div className="container py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">
             {t('recipes.title')}
           </h1>
           <p className="text-muted-foreground">
             {t('recipes.subtitle')}
           </p>
+        </div>
+
+        {/* Tab toggle */}
+        <div className="flex gap-2 mb-6">
+          <Button
+            variant={activeTab === 'system' ? 'default' : 'outline'}
+            className="gap-2"
+            onClick={() => setActiveTab('system')}
+          >
+            <BookOpen className="h-4 w-4" />
+            {t('recipes.title')}
+          </Button>
+          <Button
+            variant={activeTab === 'community' ? 'default' : 'outline'}
+            className="gap-2"
+            onClick={() => setActiveTab('community')}
+          >
+            <Globe className="h-4 w-4" />
+            Community
+          </Button>
         </div>
 
         {/* Filters */}
@@ -77,15 +101,15 @@ export default function Recipes() {
         {/* Sort and Results info */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="text-muted-foreground">
-            {totalResults > 0 && (
-              <span>{t('recipes.showing')} {recipes.length} {t('recipes.of')} {totalResults}</span>
+            {active.totalResults > 0 && (
+              <span>{t('recipes.showing')} {active.recipes.length} {t('recipes.of')} {active.totalResults}</span>
             )}
           </div>
 
           <div className="flex items-center gap-2">
             <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">{t('recipes.sortBy')}:</span>
-            <Select value={sortBy} onValueChange={handleSortChange}>
+            <Select value={active.sortBy} onValueChange={handleSortChange}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue />
               </SelectTrigger>
@@ -100,14 +124,15 @@ export default function Recipes() {
 
         {/* Results */}
         <RecipeGridWithSaveCount
-          recipes={recipes}
-          isLoading={isLoading}
+          recipes={active.recipes}
+          isLoading={active.isLoading}
           onAddToMealPlan={handleAddToMealPlan}
-          getSaveCount={getSaveCount}
+          getSaveCount={active.getSaveCount}
+          emptyMessage={activeTab === 'community' ? 'No community recipes yet. Publish your recipes to share them!' : undefined}
         />
 
         {/* Load More */}
-        {hasMore && !isLoading && (
+        {active.hasMore && !active.isLoading && (
           <div className="flex justify-center mt-8">
             <Button onClick={handleLoadMore} variant="outline" size="lg">
               {t('recipes.loadMore')}
@@ -128,9 +153,10 @@ interface RecipeGridWithSaveCountProps {
   isLoading?: boolean;
   onAddToMealPlan?: (recipe: Recipe) => void;
   getSaveCount: (recipeUri: string) => number;
+  emptyMessage?: string;
 }
 
-function RecipeGridWithSaveCount({ recipes, isLoading, onAddToMealPlan, getSaveCount }: RecipeGridWithSaveCountProps) {
+function RecipeGridWithSaveCount({ recipes, isLoading, onAddToMealPlan, getSaveCount, emptyMessage }: RecipeGridWithSaveCountProps) {
   const { t } = useLanguage();
 
   if (isLoading) {
@@ -148,7 +174,7 @@ function RecipeGridWithSaveCount({ recipes, isLoading, onAddToMealPlan, getSaveC
   if (recipes.length === 0) {
     return (
       <div className="text-center py-16">
-        <p className="text-muted-foreground text-lg">{t('recipes.noResults')}</p>
+        <p className="text-muted-foreground text-lg">{emptyMessage || t('recipes.noResults')}</p>
       </div>
     );
   }

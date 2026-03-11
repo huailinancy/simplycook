@@ -201,7 +201,7 @@ export default function MealPlanner() {
     swapRecipesBetweenSlots,
   } = useMealPlan();
 
-  const { generateMealPlan, fetchRecipesBySource, isGenerating } = useMealPlanGenerator();
+  const { generateMealPlan, fetchRecipesBySource, fetchCommunityRecipes, isGenerating } = useMealPlanGenerator();
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const { t, language } = useLanguage();
@@ -220,6 +220,8 @@ export default function MealPlanner() {
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerCuisine, setPickerCuisine] = useState('');
   const [pickerPrepTime, setPickerPrepTime] = useState('');
+  const [pickerTab, setPickerTab] = useState<'mine' | 'community'>('mine');
+  const [communityRecipes, setCommunityRecipes] = useState<SupabaseRecipe[]>([]);
 
   // DnD state
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -275,9 +277,14 @@ export default function MealPlanner() {
     setPickerSearch('');
     setPickerCuisine('');
     setPickerPrepTime('');
+    setPickerTab('mine');
 
-    const recipes = await fetchRecipesBySource(selectedCategoryIds[0] ?? 'all');
-    setAvailableRecipes(recipes);
+    const [myRecipes, community] = await Promise.all([
+      fetchRecipesBySource(selectedCategoryIds[0] ?? 'all'),
+      fetchCommunityRecipes(),
+    ]);
+    setAvailableRecipes(myRecipes);
+    setCommunityRecipes(community);
     setRecipesLoading(false);
   };
 
@@ -303,15 +310,15 @@ export default function MealPlanner() {
   };
 
   const uniqueCuisines = useMemo(() => {
+    const pool = pickerTab === 'community' ? communityRecipes : availableRecipes;
     const cuisines = new Set<string>();
-    availableRecipes.forEach(r => {
-      if (r.cuisine) cuisines.add(r.cuisine);
-    });
+    pool.forEach(r => { if (r.cuisine) cuisines.add(r.cuisine); });
     return Array.from(cuisines).sort();
-  }, [availableRecipes]);
+  }, [availableRecipes, communityRecipes, pickerTab]);
 
   const filteredRecipes = useMemo(() => {
-    return availableRecipes.filter(recipe => {
+    const pool = pickerTab === 'community' ? communityRecipes : availableRecipes;
+    return pool.filter(recipe => {
       if (pickerSearch) {
         const searchLower = pickerSearch.toLowerCase();
         const name = (recipe.name || '').toLowerCase();
@@ -337,7 +344,7 @@ export default function MealPlanner() {
 
       return true;
     });
-  }, [availableRecipes, pickerSearch, pickerCuisine, pickerPrepTime]);
+  }, [availableRecipes, communityRecipes, pickerTab, pickerSearch, pickerCuisine, pickerPrepTime]);
 
   const totalMealsPlanned = mealSlots.filter(s => s.recipe).length;
 
@@ -783,6 +790,26 @@ export default function MealPlanner() {
             </DialogHeader>
 
             <div className="space-y-4">
+              {/* Tab toggle */}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={pickerTab === 'mine' ? 'default' : 'outline'}
+                  onClick={() => setPickerTab('mine')}
+                >
+                  {language === 'zh' ? '我的食谱' : 'My Recipes'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={pickerTab === 'community' ? 'default' : 'outline'}
+                  className="gap-1.5"
+                  onClick={() => setPickerTab('community')}
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  {language === 'zh' ? '社区食谱' : 'Community'}
+                </Button>
+              </div>
+
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -834,7 +861,11 @@ export default function MealPlanner() {
                 ) : filteredRecipes.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <p>{t('mealPlanner.noRecipesFound')}</p>
-                    <p className="text-sm mt-2">{t('mealPlanner.tryDifferentSource')}</p>
+                    <p className="text-sm mt-2">
+                      {pickerTab === 'community'
+                        ? (language === 'zh' ? '暂无已发布的社区食谱' : 'No published community recipes yet')
+                        : t('mealPlanner.tryDifferentSource')}
+                    </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-4">

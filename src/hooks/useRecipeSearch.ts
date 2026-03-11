@@ -8,6 +8,7 @@ export type SortOption = 'newest' | 'popular' | 'name';
 
 interface UseRecipeSearchOptions {
   sortBy?: SortOption;
+  source?: 'system' | 'community';
 }
 
 export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
@@ -17,6 +18,7 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
   const [totalResults, setTotalResults] = useState(0);
   const [currentOffset, setCurrentOffset] = useState(0);
   const [sortBy, setSortBy] = useState<SortOption>(options.sortBy || 'newest');
+  const source = options.source ?? 'system';
   const { toast } = useToast();
   const { language } = useLanguage();
 
@@ -24,10 +26,17 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
     setIsLoading(true);
 
     try {
-      // Build Supabase query - fetch all, filter client-side
+      // Build Supabase query
       let query = supabase
         .from('recipes')
         .select('*', { count: 'exact' });
+
+      // Source filter (server-side)
+      if (source === 'community') {
+        query = query.eq('is_published', true).not('user_id', 'is', null);
+      } else {
+        query = query.is('user_id', null);
+      }
 
       // Search by name or description
       if (filters.query) {
@@ -44,8 +53,7 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
         query = query.contains('meal_type', [filters.mealType.toLowerCase()]);
       }
 
-      // Always sort recipes with images first, then apply user sort
-      // Recipes with null/empty image_url or wikimedia URLs go to the end
+      // Sort
       switch (sort) {
         case 'popular':
           query = query.order('save_count', { ascending: false, nullsFirst: false });
@@ -70,11 +78,6 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
       }
 
       let fetchedRecipes = data as SupabaseRecipe[];
-
-      // Only show system recipes (user_id is null/undefined/empty)
-      fetchedRecipes = fetchedRecipes.filter(recipe =>
-        recipe.user_id === null || recipe.user_id === undefined || recipe.user_id === ''
-      );
 
       // Apply client-side time filtering for accuracy
       if (filters.time) {
@@ -139,7 +142,7 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, sortBy, language]);
+  }, [toast, sortBy, language, source]);
 
   const loadMore = useCallback((filters: SearchFilters) => {
     searchRecipes(filters, currentOffset + 12, sortBy);

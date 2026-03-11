@@ -27,6 +27,23 @@ export function useMealPlanGenerator() {
     }
   }, [user]);
 
+  // Fetch all community (published) recipes for the picker
+  const fetchCommunityRecipes = useCallback(async (): Promise<SupabaseRecipe[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('*')
+        .eq('is_published', true)
+        .not('user_id', 'is', null)
+        .order('save_count', { ascending: false });
+      if (error) throw error;
+      return data as SupabaseRecipe[];
+    } catch (err) {
+      console.error('Error fetching community recipes:', err);
+      return [];
+    }
+  }, []);
+
   // Fetch all user recipes (for recipe picker)
   const fetchRecipesBySource = useCallback(async (source: string): Promise<SupabaseRecipe[]> => {
     try {
@@ -167,6 +184,7 @@ export function useMealPlanGenerator() {
   return {
     generateMealPlan,
     fetchRecipesBySource,
+    fetchCommunityRecipes,
     isGenerating,
     error,
   };
