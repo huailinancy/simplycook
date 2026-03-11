@@ -36,9 +36,24 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
     await toggleSave(recipeId);
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (selectable && onSelect) {
+      e.preventDefault();
+      e.stopPropagation();
+      onSelect(recipe.uri);
+    }
+  };
+
+  const Wrapper = selectable ? 'div' : Link;
+  const wrapperProps = selectable ? { onClick: handleCardClick } : { to: `/recipe/${recipe.uri}` };
+
   return (
-    <Link to={`/recipe/${recipe.uri}`}>
-    <article className={cn("recipe-card group cursor-pointer", className)}>
+    <Wrapper {...wrapperProps as any}>
+    <article className={cn(
+      "recipe-card group cursor-pointer relative",
+      selectable && isSelected && "ring-2 ring-primary rounded-xl",
+      className
+    )}>
       <div className="relative aspect-[4/3] overflow-hidden">
         <img
           src={recipe.image}
