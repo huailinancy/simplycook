@@ -259,7 +259,8 @@ export default function MealPlanner() {
         dietPreferences: userProfile?.diet_preferences,
         flavorPreferences: userProfile?.flavor_preferences,
       },
-      numberOfPersons
+      numberOfPersons,
+      selectedMealTypes
     );
 
     if (slots.length > 0) {
