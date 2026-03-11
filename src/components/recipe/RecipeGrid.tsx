@@ -7,6 +7,9 @@ interface RecipeGridProps {
   isLoading?: boolean;
   onAddToMealPlan?: (recipe: Recipe) => void;
   mealPlanRecipeIds?: string[];
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onSelect?: (recipeId: string) => void;
 }
 
 export function RecipeGrid({ recipes, isLoading, onAddToMealPlan, mealPlanRecipeIds = [] }: RecipeGridProps) {
