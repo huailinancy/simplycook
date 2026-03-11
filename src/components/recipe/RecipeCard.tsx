@@ -1,4 +1,4 @@
-import { Clock, Users, Flame, Plus, Check, Bookmark, Heart } from 'lucide-react';
+import { Clock, Users, Flame, Plus, Check, Bookmark, Heart, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,9 +14,12 @@ interface RecipeCardProps {
   isInMealPlan?: boolean;
   className?: string;
   saveCount?: number;
+  selectable?: boolean;
+  isSelected?: boolean;
+  onSelect?: (recipeId: string) => void;
 }
 
-export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, saveCount }: RecipeCardProps) {
+export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, saveCount, selectable, isSelected, onSelect }: RecipeCardProps) {
   const calories = Math.round(recipe.calories / recipe.yield);
   const prepTime = recipe.totalTime || 30;
   const { user } = useAuth();
@@ -33,9 +36,24 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
     await toggleSave(recipeId);
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (selectable && onSelect) {
+      e.preventDefault();
+      e.stopPropagation();
+      onSelect(recipe.uri);
+    }
+  };
+
+  const Wrapper = selectable ? 'div' : Link;
+  const wrapperProps = selectable ? { onClick: handleCardClick } : { to: `/recipe/${recipe.uri}` };
+
   return (
-    <Link to={`/recipe/${recipe.uri}`}>
-    <article className={cn("recipe-card group cursor-pointer", className)}>
+    <Wrapper {...wrapperProps as any}>
+    <article className={cn(
+      "recipe-card group cursor-pointer relative",
+      selectable && isSelected && "ring-2 ring-primary rounded-xl",
+      className
+    )}>
       <div className="relative aspect-[4/3] overflow-hidden">
         <img
           src={recipe.image}
@@ -44,7 +62,17 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-
+        {/* Selection indicator */}
+        {selectable && (
+          <div className={cn(
+            "absolute top-3 left-3 z-10 transition-all",
+          )}>
+            <CheckCircle2 className={cn(
+              "h-6 w-6 drop-shadow-md",
+              isSelected ? "text-primary fill-primary-foreground" : "text-white/60"
+            )} />
+          </div>
+        )}
         {/* Save/Bookmark button - only visible for logged in users */}
         {user && (
           <Button
@@ -137,6 +165,6 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
         )}
       </div>
     </article>
-    </Link>
+    </Wrapper>
   );
 }

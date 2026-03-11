@@ -7,9 +7,12 @@ interface RecipeGridProps {
   isLoading?: boolean;
   onAddToMealPlan?: (recipe: Recipe) => void;
   mealPlanRecipeIds?: string[];
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onSelect?: (recipeId: string) => void;
 }
 
-export function RecipeGrid({ recipes, isLoading, onAddToMealPlan, mealPlanRecipeIds = [] }: RecipeGridProps) {
+export function RecipeGrid({ recipes, isLoading, onAddToMealPlan, mealPlanRecipeIds = [], selectable, selectedIds, onSelect }: RecipeGridProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -38,6 +41,9 @@ export function RecipeGrid({ recipes, isLoading, onAddToMealPlan, mealPlanRecipe
             recipe={recipe}
             onAddToMealPlan={onAddToMealPlan}
             isInMealPlan={mealPlanRecipeIds.includes(recipe.uri)}
+            selectable={selectable}
+            isSelected={selectedIds?.has(recipe.uri)}
+            onSelect={onSelect}
           />
         </div>
       ))}

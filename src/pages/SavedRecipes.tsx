@@ -8,13 +8,16 @@ import { useSavedRecipesContext } from '@/contexts/SavedRecipesContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, SupabaseRecipe, toAppRecipe } from '@/types/recipe';
-import { Bookmark, LogIn } from 'lucide-react';
+import { Bookmark, LogIn, Globe, CheckSquare, X, Loader2 } from 'lucide-react';
 import { QuickAddRecipeDialog } from '@/components/recipe/QuickAddRecipeDialog';
 import { useToast } from '@/hooks/use-toast';
 
 export default function SavedRecipes() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isPublishing, setIsPublishing] = useState(false);
   const { user, loading: authLoading } = useAuth();
   const { savedRecipes } = useSavedRecipesContext();
   const { toast } = useToast();
@@ -61,6 +64,81 @@ export default function SavedRecipes() {
     fetchSavedRecipeDetails();
   }, [user, savedRecipes, toast, language]);
 
+  const handleSelect = (recipeId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(recipeId)) {
+        next.delete(recipeId);
+      } else {
+        next.add(recipeId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === recipes.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(recipes.map(r => r.uri)));
+    }
+  };
+
+  const handleCancelSelect = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkPublish = async () => {
+    if (selectedIds.size === 0) return;
+
+    setIsPublishing(true);
+    try {
+      const ids = Array.from(selectedIds).map(id => parseInt(id));
+
+      // Update each recipe to published - need to do individually due to RLS
+      const promises = ids.map(id =>
+        supabase
+          .from('recipes')
+          .update({ is_published: true })
+          .eq('id', id)
+      );
+
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => r.error);
+
+      if (errors.length > 0) {
+        console.error('Some recipes failed to publish:', errors);
+        toast({
+          title: language === 'zh' ? '部分发布失败' : 'Partial failure',
+          description: language === 'zh'
+            ? `${ids.length - errors.length}/${ids.length} 个菜谱发布成功`
+            : `${ids.length - errors.length}/${ids.length} recipes published`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: language === 'zh' ? '发布成功' : 'Published',
+          description: language === 'zh'
+            ? `已成功发布 ${ids.length} 个菜谱到社区`
+            : `Successfully published ${ids.length} recipe${ids.length > 1 ? 's' : ''} to community`,
+        });
+      }
+
+      handleCancelSelect();
+      fetchSavedRecipeDetails();
+    } catch (error) {
+      console.error('Error publishing recipes:', error);
+      toast({
+        title: language === 'zh' ? '发布失败' : 'Error',
+        description: language === 'zh' ? '发布菜谱时出错' : 'Failed to publish recipes',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <Layout>
@@ -71,7 +149,6 @@ export default function SavedRecipes() {
     );
   }
 
-  // Show sign-in prompt for non-authenticated users
   if (!user) {
     return (
       <Layout>
@@ -111,9 +188,57 @@ export default function SavedRecipes() {
                 {t('saved.subtitle')}
               </p>
             </div>
-            <QuickAddRecipeDialog onRecipesAdded={fetchSavedRecipeDetails} />
+            <div className="flex items-center gap-2">
+              {recipes.length > 0 && !selectMode && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setSelectMode(true)}
+                >
+                  <CheckSquare className="h-4 w-4" />
+                  {language === 'zh' ? '选择' : 'Select'}
+                </Button>
+              )}
+              <QuickAddRecipeDialog onRecipesAdded={fetchSavedRecipeDetails} />
+            </div>
           </div>
         </div>
+
+        {/* Selection action bar */}
+        {selectMode && (
+          <div className="mb-4 flex items-center justify-between bg-muted/50 rounded-lg px-4 py-3 border border-border">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={handleCancelSelect}>
+                <X className="h-4 w-4 mr-1" />
+                {language === 'zh' ? '取消' : 'Cancel'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleSelectAll}>
+                {selectedIds.size === recipes.length
+                  ? (language === 'zh' ? '取消全选' : 'Deselect All')
+                  : (language === 'zh' ? '全选' : 'Select All')}
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {language === 'zh'
+                  ? `已选 ${selectedIds.size} 个`
+                  : `${selectedIds.size} selected`}
+              </span>
+            </div>
+            <Button
+              onClick={handleBulkPublish}
+              disabled={selectedIds.size === 0 || isPublishing}
+              className="gap-2"
+            >
+              {isPublishing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Globe className="h-4 w-4" />
+              )}
+              {language === 'zh'
+                ? `发布到社区${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`
+                : `Publish${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
+            </Button>
+          </div>
+        )}
 
         {/* Results */}
         {!isLoading && recipes.length === 0 ? (
@@ -125,13 +250,19 @@ export default function SavedRecipes() {
             </p>
           </div>
         ) : (
-          <RecipeGrid recipes={recipes} isLoading={isLoading} />
+          <RecipeGrid
+            recipes={recipes}
+            isLoading={isLoading}
+            selectable={selectMode}
+            selectedIds={selectedIds}
+            onSelect={handleSelect}
+          />
         )}
 
         {/* Count */}
         {recipes.length > 0 && (
           <p className="text-center text-muted-foreground mt-8">
-            {recipes.length} saved {recipes.length === 1 ? 'recipe' : 'recipes'}
+            {recipes.length} {language === 'zh' ? '个收藏菜谱' : (recipes.length === 1 ? 'saved recipe' : 'saved recipes')}
           </p>
         )}
       </div>
