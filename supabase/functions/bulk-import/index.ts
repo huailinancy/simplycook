@@ -2,6 +2,8 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,8 +59,8 @@ function extractImageUrls(html: string): string[] {
   return imageUrls;
 }
 
-/** Download an image server-side and return a base64 data-URI */
-async function fetchImageAsDataUri(imageUrl: string): Promise<string | null> {
+/** Download an image server-side and return a base64 data-URI plus raw bytes */
+async function fetchImageAsDataUri(imageUrl: string): Promise<{ dataUri: string; bytes: Uint8Array; contentType: string } | null> {
   try {
     const res = await fetch(imageUrl, {
       headers: {
@@ -77,8 +79,30 @@ async function fetchImageAsDataUri(imageUrl: string): Promise<string | null> {
       binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
     }
     const b64 = btoa(binary);
-    const ct = res.headers.get('content-type') ?? 'image/jpeg';
-    return `data:${ct};base64,${b64}`;
+    const contentType = res.headers.get('content-type') ?? 'image/jpeg';
+    return { dataUri: `data:${contentType};base64,${b64}`, bytes, contentType };
+  } catch {
+    return null;
+  }
+}
+
+/** Upload raw image bytes to Supabase Storage and return the public URL */
+async function uploadToStorage(bytes: Uint8Array, contentType: string, idx: number): Promise<string | null> {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+  try {
+    const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
+    const path = `bulk-import/${Date.now()}-${idx}.${ext}`;
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/recipe-images/${path}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': contentType,
+        'x-upsert': 'false',
+      },
+      body: bytes,
+    });
+    if (!res.ok) return null;
+    return `${SUPABASE_URL}/storage/v1/object/public/recipe-images/${path}`;
   } catch {
     return null;
   }
@@ -171,10 +195,19 @@ serve(async (req) => {
 
     for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
       const batch = toProcess.slice(i, i + BATCH_SIZE);
-      const dataUris = await Promise.all(batch.map(u => fetchImageAsDataUri(u)));
-      const batchResults = await Promise.all(
-        dataUris.map((uri, j) => uri ? extractRecipeFromImage(uri, batch[j]) : Promise.resolve(null))
-      );
+
+      const batchResults = await Promise.all(batch.map(async (imgUrl, j) => {
+        const result = await fetchImageAsDataUri(imgUrl);
+        if (!result) return null;
+        const { dataUri, bytes, contentType } = result;
+
+        // Upload to Supabase Storage for a permanent URL
+        const storageUrl = await uploadToStorage(bytes, contentType, i + j);
+        const persistentUrl = storageUrl ?? imgUrl;
+
+        return extractRecipeFromImage(dataUri, persistentUrl);
+      }));
+
       for (const r of batchResults) {
         if (r) recipes.push(r);
       }

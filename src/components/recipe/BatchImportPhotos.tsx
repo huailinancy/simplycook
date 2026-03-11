@@ -70,7 +70,24 @@ export function BatchImportPhotos({ onComplete, onClose }: BatchImportPhotosProp
     } catch { return false; }
   };
 
-  const saveRecipe = async (recipe: any) => {
+  const uploadImageToStorage = async (file: File): Promise<string | null> => {
+    if (!user) return null;
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `user-${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from('recipe-images')
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error || !data) return null;
+      const { data: urlData } = supabase.storage.from('recipe-images').getPublicUrl(data.path);
+      return urlData.publicUrl;
+    } catch {
+      return null;
+    }
+  };
+
+  const saveRecipe = async (recipe: any, imageFile?: File) => {
+    const imageUrl = imageFile ? (await uploadImageToStorage(imageFile)) ?? recipe.image_url ?? null : recipe.image_url ?? null;
     const { error: insertError } = await supabase.from('recipes').insert({
       name: recipe.name,
       description: recipe.description || null,
@@ -83,8 +100,8 @@ export function BatchImportPhotos({ onComplete, onClose }: BatchImportPhotosProp
       ingredients: recipe.ingredients || [],
       instructions: recipe.instructions || [],
       tags: recipe.tags || [],
-      image_url: recipe.image_url || null,
-      author: recipe.author || null,
+      image_url: imageUrl,
+      author: user!.email?.split('@')[0] || null,
       source_url: recipe.source_url || null,
       user_id: user!.id,
       is_published: false,
@@ -96,7 +113,7 @@ export function BatchImportPhotos({ onComplete, onClose }: BatchImportPhotosProp
   const confirmDuplicate = (photoId: string) => {
     const photo = photos.find(p => p.id === photoId);
     if (!photo?.extractedRecipe) return;
-    saveRecipe(photo.extractedRecipe).then(() => {
+    saveRecipe(photo.extractedRecipe, photo.file).then(() => {
       setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, status: 'done' } : p));
       onComplete();
     }).catch((err) => {
@@ -136,7 +153,7 @@ export function BatchImportPhotos({ onComplete, onClose }: BatchImportPhotosProp
           continue;
         }
 
-        await saveRecipe(recipe);
+        await saveRecipe(recipe, photo.file);
         setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, status: 'done', recipeName: recipe.name } : p));
         successCount++;
       } catch (err: any) {
