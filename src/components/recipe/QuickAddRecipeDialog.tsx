@@ -47,10 +47,20 @@ export function QuickAddRecipeDialog({ onRecipesAdded }: QuickAddRecipeDialogPro
     setIsSubmitting(true);
     try {
       // Insert recipes
+      // Fetch user display name for author field
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .single();
+
+      const authorName = profile?.display_name || user.email?.split('@')[0] || 'User';
+
       const recipesToInsert = names.map(name => ({
         name: name.trim(),
         user_id: user.id,
         is_published: false,
+        author: authorName,
         ingredients: [] as any[],
         instructions: [] as any[],
         tags: [] as any[],
