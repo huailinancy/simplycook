@@ -177,7 +177,8 @@ export function useMealPlanGenerator() {
       let poolIndex = 0;
       for (let day = 0; day < 7; day++) {
         for (const mt of mealTypes) {
-          for (let i = 0; i < dishesPerMeal; i++) {
+          const count = dishCounts[mt] || 2;
+          for (let i = 0; i < count; i++) {
             mealSlots.push({ dayOfWeek: day, mealType: mt, recipe: recipePool[poolIndex % recipePool.length] });
             poolIndex++;
           }

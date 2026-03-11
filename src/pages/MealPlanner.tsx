@@ -473,24 +473,41 @@ export default function MealPlanner() {
                     <label className="text-sm font-medium flex items-center gap-2">
                       {t('mealPlanner.numberOfPersons')}
                     </label>
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setNumberOfPersons(Math.max(1, numberOfPersons - 1))}
-                        disabled={numberOfPersons <= 1}
-                      >
-                        -
-                      </Button>
-                      <span className="text-2xl font-bold w-8 text-center">{numberOfPersons}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setNumberOfPersons(Math.min(6, numberOfPersons + 1))}
-                        disabled={numberOfPersons >= 6}
-                      >
-                        +
-                      </Button>
+                    <div className="space-y-3">
+                      {(['lunch', 'dinner'] as const).map(type => {
+                        const isEnabled = selectedMealTypes.includes(type);
+                        const count = type === 'lunch' ? lunchDishCount : dinnerDishCount;
+                        const setCount = type === 'lunch' ? setLunchDishCount : setDinnerDishCount;
+                        const label = type === 'lunch'
+                          ? (language === 'zh' ? '午餐' : 'Lunch')
+                          : (language === 'zh' ? '晚餐' : 'Dinner');
+                        return (
+                          <div key={type} className={cn("flex items-center justify-between", !isEnabled && "opacity-40")}>
+                            <span className="text-sm">{label}</span>
+                            <div className="flex items-center gap-3">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setCount(Math.max(1, count - 1))}
+                                disabled={!isEnabled || count <= 1}
+                              >
+                                -
+                              </Button>
+                              <span className="text-lg font-bold w-6 text-center">{count}</span>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setCount(Math.min(6, count + 1))}
+                                disabled={!isEnabled || count >= 6}
+                              >
+                                +
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                     <p className="text-xs text-muted-foreground">{t('mealPlanner.personsDesc')}</p>
                   </div>
