@@ -216,6 +216,7 @@ export default function MealPlanner() {
   const [recipesLoading, setRecipesLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [numberOfPersons, setNumberOfPersons] = useState(2);
+  const [selectedMealTypes, setSelectedMealTypes] = useState<('lunch' | 'dinner')[]>(['dinner']);
 
   // Recipe picker filters
   const [pickerSearch, setPickerSearch] = useState('');
@@ -258,7 +259,8 @@ export default function MealPlanner() {
         dietPreferences: userProfile?.diet_preferences,
         flavorPreferences: userProfile?.flavor_preferences,
       },
-      numberOfPersons
+      numberOfPersons,
+      selectedMealTypes
     );
 
     if (slots.length > 0) {
@@ -430,6 +432,41 @@ export default function MealPlanner() {
                   <p className="text-sm text-muted-foreground">
                     {t('mealPlanner.generateDesc')}
                   </p>
+
+                  {/* Meal type selection */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      {language === 'zh' ? '计划您的' : 'Plan for'}
+                    </label>
+                    <div className="flex gap-2">
+                      {(['lunch', 'dinner'] as const).map(type => {
+                        const isSelected = selectedMealTypes.includes(type);
+                        const label = type === 'lunch'
+                          ? (language === 'zh' ? '午餐' : 'Lunch')
+                          : (language === 'zh' ? '晚餐' : 'Dinner');
+                        return (
+                          <Button
+                            key={type}
+                            variant={isSelected ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                              setSelectedMealTypes(prev => {
+                                if (isSelected && prev.length <= 1) return prev; // keep at least one
+                                return isSelected
+                                  ? prev.filter(t => t !== type)
+                                  : [...prev, type];
+                              });
+                            }}
+                          >
+                            {label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'zh' ? '选择要规划的餐次（可多选）' : 'Select meal types to plan (multi-select)'}
+                    </p>
+                  </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2">
