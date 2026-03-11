@@ -465,14 +465,45 @@ export default function MealPlanner() {
                           ? '按优先级顺序点击分类。主分类优先填满计划，其他分类补充。'
                           : 'Click categories in priority order. The primary category fills the plan first; others supplement when needed.'}
                       </p>
-                      {categories.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-4 text-center">
-                          {language === 'zh'
-                            ? '您还没有创建分类。请先在"我的食谱"页面创建分类。'
-                            : 'No categories yet. Create categories in My Recipes first.'}
-                        </p>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {/* "全部菜单" option */}
+                          {(() => {
+                            const isAllSelected = selectedCategoryIds.includes(ALL_MENU_ID);
+                            const rank = selectedCategoryIds.indexOf(ALL_MENU_ID);
+                            return (
+                              <button
+                                key={ALL_MENU_ID}
+                                type="button"
+                                onClick={() => {
+                                  if (isAllSelected) {
+                                    if (selectedCategoryIds.length > 1)
+                                      setSelectedCategoryIds(prev => prev.filter(id => id !== ALL_MENU_ID));
+                                  } else {
+                                    setSelectedCategoryIds(prev => [...prev, ALL_MENU_ID]);
+                                  }
+                                }}
+                                className={cn(
+                                  'relative flex flex-col items-center gap-1 p-3 rounded-lg border-2 text-xs transition-colors',
+                                  isAllSelected
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-border hover:border-primary/40 text-muted-foreground'
+                                )}
+                              >
+                                {isAllSelected && (
+                                  <span className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                                    {rank + 1}
+                                  </span>
+                                )}
+                                <Globe className="h-4 w-4" />
+                                <span className="font-medium text-center leading-tight">
+                                  {language === 'zh' ? '全部菜单' : 'All Recipes'}
+                                </span>
+                                {isAllSelected && rank === 0 && (
+                                  <span className="text-[10px] text-primary/70">{language === 'zh' ? '主要' : 'Primary'}</span>
+                                )}
+                              </button>
+                            );
+                          })()}
                           {categories.map((cat) => {
                             const rank = selectedCategoryIds.indexOf(cat.id);
                             const selected = rank !== -1;
@@ -508,7 +539,6 @@ export default function MealPlanner() {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   )}
 
