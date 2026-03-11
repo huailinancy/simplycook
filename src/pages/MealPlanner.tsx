@@ -216,6 +216,7 @@ export default function MealPlanner() {
   const [recipesLoading, setRecipesLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [numberOfPersons, setNumberOfPersons] = useState(2);
+  const [selectedMealTypes, setSelectedMealTypes] = useState<('lunch' | 'dinner')[]>(['dinner']);
 
   // Recipe picker filters
   const [pickerSearch, setPickerSearch] = useState('');
