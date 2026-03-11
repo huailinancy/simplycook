@@ -99,7 +99,7 @@ async function uploadToStorage(bytes: Uint8Array, contentType: string, idx: numb
         'Content-Type': contentType,
         'x-upsert': 'false',
       },
-      body: bytes,
+      body: bytes as unknown as BodyInit,
     });
     if (!res.ok) return null;
     return `${SUPABASE_URL}/storage/v1/object/public/recipe-images/${path}`;
