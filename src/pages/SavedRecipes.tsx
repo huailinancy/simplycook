@@ -99,15 +99,20 @@ export default function SavedRecipes() {
       <div className="container py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Bookmark className="h-8 w-8 text-primary" />
-            <h1 className="font-display text-3xl md:text-4xl font-bold">
-              {t('saved.title')}
-            </h1>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Bookmark className="h-8 w-8 text-primary" />
+                <h1 className="font-display text-3xl md:text-4xl font-bold">
+                  {t('saved.title')}
+                </h1>
+              </div>
+              <p className="text-muted-foreground">
+                {t('saved.subtitle')}
+              </p>
+            </div>
+            <QuickAddRecipeDialog onRecipesAdded={fetchSavedRecipeDetails} />
           </div>
-          <p className="text-muted-foreground">
-            {t('saved.subtitle')}
-          </p>
         </div>
 
         {/* Results */}
