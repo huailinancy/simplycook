@@ -1,4 +1,4 @@
-import { Clock, Users, Flame, Plus, Check, Bookmark, Heart } from 'lucide-react';
+import { Clock, Users, Flame, Plus, Check, Bookmark, Heart, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,9 @@ interface RecipeCardProps {
   isInMealPlan?: boolean;
   className?: string;
   saveCount?: number;
+  selectable?: boolean;
+  isSelected?: boolean;
+  onSelect?: (recipeId: string) => void;
 }
 
 export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, saveCount }: RecipeCardProps) {
