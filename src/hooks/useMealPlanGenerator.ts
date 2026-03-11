@@ -29,6 +29,22 @@ export function useMealPlanGenerator() {
     }
   }, [user]);
 
+  // Fetch all user recipes (no category filter)
+  const fetchAllUserRecipes = useCallback(async (): Promise<SupabaseRecipe[]> => {
+    try {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('*')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data as SupabaseRecipe[];
+    } catch (err) {
+      console.error('Error fetching all user recipes:', err);
+      return [];
+    }
+  }, [user]);
+
   // Fetch all community (published) recipes for the picker
   const fetchCommunityRecipes = useCallback(async (): Promise<SupabaseRecipe[]> => {
     try {
