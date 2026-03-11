@@ -100,15 +100,13 @@ export function useMealPlanGenerator() {
   const generateMealPlan = useCallback(async (
     categoryIds: string[],
     userPreferences?: { allergies?: string[]; dietPreferences?: string[]; flavorPreferences?: string[] },
-    numberOfPersons: number = 2,
+    dishCounts: { lunch: number; dinner: number } = { lunch: 2, dinner: 2 },
     mealTypes: ('lunch' | 'dinner')[] = ['lunch', 'dinner']
   ): Promise<MealSlot[]> => {
     setIsGenerating(true);
     setError(null);
 
-    const dishesPerMeal = numberOfPersons;
-    const mealsPerDay = mealTypes.length;
-    const totalSlots = 7 * mealsPerDay * dishesPerMeal;
+    const totalSlots = 7 * mealTypes.reduce((sum, mt) => sum + (dishCounts[mt] || 2), 0);
 
     try {
       // 1. Determine primary source
@@ -179,7 +177,8 @@ export function useMealPlanGenerator() {
       let poolIndex = 0;
       for (let day = 0; day < 7; day++) {
         for (const mt of mealTypes) {
-          for (let i = 0; i < dishesPerMeal; i++) {
+          const count = dishCounts[mt] || 2;
+          for (let i = 0; i < count; i++) {
             mealSlots.push({ dayOfWeek: day, mealType: mt, recipe: recipePool[poolIndex % recipePool.length] });
             poolIndex++;
           }
