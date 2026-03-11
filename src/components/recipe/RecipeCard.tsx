@@ -44,13 +44,6 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-        {/* Time badge */}
-        <div className="absolute top-3 left-3">
-          <Badge variant="secondary" className="bg-background/90 backdrop-blur-sm gap-1.5">
-            <Clock className="h-3 w-3" />
-            {prepTime} min
-          </Badge>
-        </div>
 
         {/* Save/Bookmark button - only visible for logged in users */}
         {user && (
