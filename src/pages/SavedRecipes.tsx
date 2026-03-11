@@ -9,6 +9,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, SupabaseRecipe, toAppRecipe } from '@/types/recipe';
 import { Bookmark, LogIn } from 'lucide-react';
+import { QuickAddRecipeDialog } from '@/components/recipe/QuickAddRecipeDialog';
 import { useToast } from '@/hooks/use-toast';
 
 export default function SavedRecipes() {
