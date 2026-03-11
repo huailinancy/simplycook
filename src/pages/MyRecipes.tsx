@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, SupabaseRecipe, toAppRecipe } from '@/types/recipe';
-import { Import, Plus, Globe, Lock, Heart, Pencil, LogIn, CheckSquare, Download, Trash2, X, FileText, FileSpreadsheet, Images, FolderPlus, Folder, MoreHorizontal, Tag, GripVertical, Camera } from 'lucide-react';
+import { Import, Plus, Globe, Lock, Heart, Pencil, LogIn, CheckSquare, Download, Trash2, X, FileText, FileSpreadsheet, Images, FolderPlus, Folder, MoreHorizontal, Tag, GripVertical, Camera, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { downloadMultipleRecipesAsPdf, downloadMultipleRecipesAsCsv } from '@/lib/recipeDownload';
@@ -124,6 +124,8 @@ export default function MyRecipes() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBatchImport, setShowBatchImport] = useState(false);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [renamingCategoryId, setRenamingCategoryId] = useState<string | null>(null);
@@ -178,11 +180,22 @@ export default function MyRecipes() {
     }
   }, [user]);
 
-  const filteredRecipes = activeCategoryFilter === null
-    ? recipes
-    : activeCategoryFilter === 'uncategorized'
-      ? recipes.filter(r => !r.category_id)
-      : recipes.filter(r => r.category_id === activeCategoryFilter);
+  const filteredRecipes = (() => {
+    let result = activeCategoryFilter === null
+      ? recipes
+      : activeCategoryFilter === 'uncategorized'
+        ? recipes.filter(r => !r.category_id)
+        : recipes.filter(r => r.category_id === activeCategoryFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(r =>
+        r.name?.toLowerCase().includes(q) ||
+        r.english_name?.toLowerCase().includes(q) ||
+        r.description?.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  })();
 
   const handleCreateRecipe = async (recipeData: {
     name: string;
@@ -562,6 +575,17 @@ export default function MyRecipes() {
                 </Button>
               )}
 
+              {recipes.length > 0 && (
+                <Button
+                  variant={showSearch ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => { setShowSearch(s => !s); setSearchQuery(''); }}
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  {language === 'zh' ? '搜索' : 'Search'}
+                </Button>
+              )}
+
               <Dialog open={showBatchImport} onOpenChange={setShowBatchImport}>
                 <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
                   <BatchImportPhotos
@@ -572,6 +596,28 @@ export default function MyRecipes() {
               </Dialog>
             </div>
           </div>
+
+          {/* Search bar */}
+          {showSearch && (
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                autoFocus
+                placeholder={language === 'zh' ? '搜索食谱名称…' : 'Search recipes…'}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+              {searchQuery && (
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setSearchQuery('')}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Drag hint */}
           {draggingRecipeId && (
