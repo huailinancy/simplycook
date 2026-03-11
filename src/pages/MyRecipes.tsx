@@ -529,12 +529,7 @@ export default function MyRecipes() {
             </div>
 
             <div className="flex items-center gap-2">
-              {recipes.length > 0 && !selectionMode && (
-                <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
-                  <CheckSquare className="h-4 w-4 mr-2" />
-                  {language === 'zh' ? '选择' : 'Select'}
-                </Button>
-              )}
+              <BulkImportDialog onSuccess={fetchMyRecipes} />
 
               <Button variant="outline" onClick={() => setShowBatchImport(true)}>
                 <Images className="h-4 w-4 mr-2" />
@@ -558,7 +553,12 @@ export default function MyRecipes() {
                 </DialogContent>
               </Dialog>
 
-              <BulkImportDialog onSuccess={fetchMyRecipes} />
+              {recipes.length > 0 && !selectionMode && (
+                <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  {language === 'zh' ? '选择' : 'Select'}
+                </Button>
+              )}
 
               <Dialog open={showBatchImport} onOpenChange={setShowBatchImport}>
                 <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
