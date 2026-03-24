@@ -32,7 +32,7 @@ export function useFilterOptions(): FilterOptions {
         const uniqueCuisines = new Set<string>();
         const uniqueMealTypes = new Set<string>();
 
-        systemRecipes.forEach((recipe) => {
+        relevantRecipes.forEach((recipe) => {
           if (recipe.cuisine) {
             uniqueCuisines.add(recipe.cuisine);
           }
