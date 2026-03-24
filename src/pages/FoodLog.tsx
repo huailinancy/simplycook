@@ -165,8 +165,7 @@ function MonthCalendarView({
   );
 }
 
-
-  const { user } = useAuth();
+export default function FoodLog() {
   const { t, language } = useLanguage();
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date());
