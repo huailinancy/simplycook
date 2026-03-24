@@ -483,14 +483,12 @@ export default function FoodLog() {
                                   alt={item.description || mealLabels[mealType]}
                                   className="h-20 w-20 rounded-lg border border-border object-cover md:h-24 md:w-24"
                                 />
-                                {!item.id && (
-                                  <button
-                                    onClick={() => handleRemovePhoto(mealType, item.tempId)}
-                                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                )}
+                                <button
+                                  onClick={() => handleRemovePhoto(mealType, item.tempId)}
+                                  className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
                               </div>
                             ) : null}
 
