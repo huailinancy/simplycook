@@ -90,26 +90,11 @@ export default function Recipes() {
         <div className="flex flex-wrap gap-2 mb-4">
           <Select value={filters.cuisineType || ''} onValueChange={(v) => handleFilterChange('cuisineType', v)}>
             <SelectTrigger className="w-[120px] md:w-[160px] h-9 text-xs md:text-sm bg-card">
-              <SelectValue placeholder={language === 'zh' ? '菜系' : 'Cuisine'} />
+              <SelectValue placeholder={language === 'zh' ? '类别' : 'Category'} />
             </SelectTrigger>
             <SelectContent>
-              {cuisines.map((cuisine) => (
-                <SelectItem key={cuisine} value={cuisine}>
-                  {translateFilterValue(cuisine, language, 'cuisine')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filters.mealType || ''} onValueChange={(v) => handleFilterChange('mealType', v)}>
-            <SelectTrigger className="w-[120px] md:w-[140px] h-9 text-xs md:text-sm bg-card">
-              <SelectValue placeholder={language === 'zh' ? '餐类' : 'Meal Type'} />
-            </SelectTrigger>
-            <SelectContent>
-              {mealTypes.map((meal) => (
-                <SelectItem key={meal} value={meal}>
-                  {translateFilterValue(meal, language, 'mealType')}
-                </SelectItem>
+              {CUISINE_TYPES.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
             </SelectContent>
           </Select>
