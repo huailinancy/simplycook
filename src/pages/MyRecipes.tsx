@@ -95,8 +95,8 @@ function DroppableCategoryButton({
       ref={setNodeRef}
       onClick={onClick}
       className={`
-        cursor-pointer select-none flex flex-col items-center justify-center gap-1.5
-        min-w-[100px] w-[110px] h-[100px] rounded-lg border-2 p-3
+        cursor-pointer select-none flex flex-col items-center justify-center gap-1
+        min-w-[70px] w-[80px] h-[76px] md:min-w-[100px] md:w-[110px] md:h-[100px] rounded-lg border-2 p-2 md:p-3
         transition-all duration-200 text-center
         ${isActive
           ? 'border-primary bg-primary/10 shadow-md'
@@ -104,11 +104,11 @@ function DroppableCategoryButton({
         ${over ? 'ring-2 ring-primary border-primary bg-primary/15 scale-105 shadow-lg' : ''}
       `}
     >
-      <Folder className={`h-8 w-8 ${isActive ? 'text-primary' : 'text-muted-foreground'} ${over ? 'text-primary' : ''}`} />
-      <span className={`text-xs font-medium leading-tight line-clamp-2 ${isActive ? 'text-primary' : 'text-foreground'}`}>
+      <Folder className={`h-6 w-6 md:h-8 md:w-8 ${isActive ? 'text-primary' : 'text-muted-foreground'} ${over ? 'text-primary' : ''}`} />
+      <span className={`text-[10px] md:text-xs font-medium leading-tight line-clamp-2 ${isActive ? 'text-primary' : 'text-foreground'}`}>
         {label}
       </span>
-      <span className="text-[10px] text-muted-foreground">({count})</span>
+      <span className="text-[9px] md:text-[10px] text-muted-foreground">({count})</span>
     </div>
   );
 }
