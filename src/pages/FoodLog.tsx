@@ -166,6 +166,97 @@ function MonthCalendarView({
   );
 }
 
+function Past30DaysReview({ user, language }: { user: { id: string }; language: string }) {
+  const [data, setData] = useState<Record<string, { lunch: string[]; dinner: string[] }>>({});
+  const [expanded, setExpanded] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (!user || !expanded) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const thirtyAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+    const foodLogsTable = supabase.from('food_logs') as any;
+    const { data: rows, error } = await foodLogsTable
+      .select('log_date, meal_type, description')
+      .eq('user_id', user.id)
+      .gte('log_date', thirtyAgo)
+      .lte('log_date', today)
+      .in('meal_type', ['lunch', 'dinner'])
+      .not('description', 'is', null)
+      .order('log_date', { ascending: false })
+      .order('sort_order', { ascending: true });
+
+    if (error) { console.error(error); return; }
+
+    const grouped: Record<string, { lunch: string[]; dinner: string[] }> = {};
+    (rows ?? []).forEach((row: any) => {
+      if (!row.description) return;
+      if (!grouped[row.log_date]) grouped[row.log_date] = { lunch: [], dinner: [] };
+      if (row.meal_type === 'lunch') grouped[row.log_date].lunch.push(row.description);
+      if (row.meal_type === 'dinner') grouped[row.log_date].dinner.push(row.description);
+    });
+    setData(grouped);
+  }, [user, expanded]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Build sorted date list for past 30 days
+  const dates = expanded
+    ? Array.from({ length: 31 }, (_, i) => format(subDays(new Date(), i), 'yyyy-MM-dd'))
+    : [];
+
+  return (
+    <div className="max-w-2xl mx-auto mt-6">
+      <Card>
+        <CardContent className="p-3 md:p-4">
+          <button
+            className="flex items-center justify-between w-full"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            <h3 className="text-sm md:text-base font-semibold">
+              {language === 'zh' ? '📋 过去30天记录' : '📋 Past 30 Days'}
+            </h3>
+            <ChevronDown className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform",
+              expanded && "rotate-180"
+            )} />
+          </button>
+
+          {expanded && (
+            <div className="mt-3 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs w-[110px]">{language === 'zh' ? '日期' : 'Date'}</TableHead>
+                    <TableHead className="text-xs">{language === 'zh' ? '午餐' : 'Lunch'}</TableHead>
+                    <TableHead className="text-xs">{language === 'zh' ? '晚餐' : 'Dinner'}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dates.map((dateStr) => {
+                    const entry = data[dateStr];
+                    const lunchText = entry?.lunch?.join('；') || '';
+                    const dinnerText = entry?.dinner?.join('；') || '';
+                    if (!lunchText && !dinnerText) return null;
+                    return (
+                      <TableRow key={dateStr}>
+                        <TableCell className="text-xs whitespace-nowrap py-2">
+                          {format(new Date(dateStr + 'T00:00:00'), language === 'zh' ? 'M月d日' : 'MMM d')}
+                        </TableCell>
+                        <TableCell className="text-xs py-2">{lunchText}</TableCell>
+                        <TableCell className="text-xs py-2">{dinnerText}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function FoodLog() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
