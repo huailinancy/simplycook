@@ -17,6 +17,8 @@ import SavedRecipes from "./pages/SavedRecipes";
 import MyRecipes from "./pages/MyRecipes";
 import FoodLog from "./pages/FoodLog";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
+import ChangePassword from "./pages/ChangePassword";
 
 const queryClient = new QueryClient();
 
