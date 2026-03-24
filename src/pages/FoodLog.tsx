@@ -265,6 +265,7 @@ export default function FoodLog() {
   const [entries, setEntries] = useState<Record<MealType, FoodLogItem[]>>(buildEmptyEntries);
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [monthDishes, setMonthDishes] = useState<Record<string, string[]>>({});
