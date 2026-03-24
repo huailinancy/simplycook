@@ -22,6 +22,7 @@ interface RecipeCardProps {
   selectable?: boolean;
   isSelected?: boolean;
   onSelect?: (recipeId: string) => void;
+  showQuickLog?: boolean;
 }
 
 export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, saveCount, selectable, isSelected, onSelect }: RecipeCardProps) {
