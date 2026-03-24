@@ -172,15 +172,40 @@ export function useMealPlanGenerator() {
         });
       }
 
-      // 5. Assign recipes to slots
-      const mealSlots: MealSlot[] = [];
+      // 5. Fetch the noodle category ID so we can enforce the standalone-meal rule
+      let noodleCategoryId: string | null = null;
+      if (user) {
+        const { data: noodleCat } = await supabase
+          .from('recipe_categories')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('name', '主食')
+          .maybeSingle();
+        noodleCategoryId = noodleCat?.id ?? null;
+      }
+
+      // 6. Assign recipes to slots
+      const rawSlots: MealSlot[] = [];
       let poolIndex = 0;
       for (let day = 0; day < 7; day++) {
         for (const mt of mealTypes) {
           const count = dishCounts[mt] || 2;
           for (let i = 0; i < count; i++) {
-            mealSlots.push({ dayOfWeek: day, mealType: mt, recipe: recipePool[poolIndex % recipePool.length] });
+            rawSlots.push({ dayOfWeek: day, mealType: mt, recipe: recipePool[poolIndex % recipePool.length] });
             poolIndex++;
+          }
+        }
+      }
+
+      // 7. Enforce staple rule: if any dish in a meal is a 主食 recipe, keep only that one
+      let mealSlots: MealSlot[] = rawSlots;
+      if (noodleCategoryId) {
+        mealSlots = [];
+        for (let day = 0; day < 7; day++) {
+          for (const mealType of ['lunch', 'dinner'] as const) {
+            const group = rawSlots.filter(s => s.dayOfWeek === day && s.mealType === mealType);
+            const noodleSlot = group.find(s => s.recipe?.category_id === noodleCategoryId);
+            mealSlots.push(...(noodleSlot ? [noodleSlot] : group));
           }
         }
       }

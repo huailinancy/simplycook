@@ -191,7 +191,7 @@ export default function RecipeDetail() {
               {localizedContent.ingredients.map((ing, i) => (
                 <li key={i} className="flex items-center gap-2">
                   <span className="text-primary">•</span>
-                  {ing.amount} {ing.name}
+                  {ing.amount && ing.amount !== '未指定' ? `${ing.amount} ` : ''}{ing.name}
                 </li>
               ))}
             </ul>
@@ -212,6 +212,16 @@ export default function RecipeDetail() {
                 </li>
               ))}
             </ol>
+          </div>
+        )}
+
+        {/* Detailed Description */}
+        {(recipe as any).macros?.detailed_description && (
+          <div className="mt-8">
+            <h2 className="text-2xl font-semibold mb-4">{language === 'zh' ? '详细描述' : 'Detailed Description'}</h2>
+            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+              {(recipe as any).macros.detailed_description}
+            </p>
           </div>
         )}
       </div>

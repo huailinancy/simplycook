@@ -98,10 +98,23 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
   const [isFinalized, setIsFinalized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mealPlanId, setMealPlanId] = useState<string | null>(null);
+  const [noodleCategoryId, setNoodleCategoryId] = useState<string | null>(null);
 
   const { user } = useAuth();
   const { toast } = useToast();
   const { language, t } = useLanguage();
+
+  // Fetch the '主食' category ID once when user is available
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('recipe_categories')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('name', '主食')
+      .maybeSingle()
+      .then(({ data }) => setNoodleCategoryId(data?.id ?? null));
+  }, [user]);
 
   const [prevUser, setPrevUser] = useState(user);
 
@@ -285,8 +298,28 @@ export function MealPlanProvider({ children }: { children: ReactNode }) {
   }, [user, currentWeekStart, mealSlots, mealPlanId, toast, t]);
 
   const addDishToMeal = useCallback((dayOfWeek: number, mealType: 'lunch' | 'dinner', recipe: SupabaseRecipe) => {
-    setMealSlots(prev => [...prev, { dayOfWeek, mealType, recipe }]);
-  }, []);
+    setMealSlots(prev => {
+      const mealDishes = prev.filter(s => s.dayOfWeek === dayOfWeek && s.mealType === mealType);
+      const otherSlots = prev.filter(s => !(s.dayOfWeek === dayOfWeek && s.mealType === mealType));
+
+      // If adding a noodle recipe, replace all existing dishes for this meal with just this one
+      if (noodleCategoryId && recipe.category_id === noodleCategoryId) {
+        return [...otherSlots, { dayOfWeek, mealType, recipe }];
+      }
+
+      // If meal already has a noodle recipe, block adding more dishes
+      if (noodleCategoryId && mealDishes.some(s => s.recipe?.category_id === noodleCategoryId)) {
+        toast({
+          title: language === 'zh' ? '主食已是完整一餐' : 'This dish is a complete meal',
+          description: language === 'zh' ? '主食类菜品无需搭配其他菜肴' : 'No other dishes needed when a staple dish is selected',
+          variant: 'destructive',
+        });
+        return prev;
+      }
+
+      return [...prev, { dayOfWeek, mealType, recipe }];
+    });
+  }, [noodleCategoryId, toast, language]);
 
   const removeDish = useCallback((dayOfWeek: number, mealType: 'lunch' | 'dinner', recipeId: number) => {
     setMealSlots(prev => {

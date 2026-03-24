@@ -403,6 +403,28 @@ export default function MyRecipes() {
     }
   };
 
+  const handleBulkPublish = async (publish: boolean) => {
+    if (selectedIds.size === 0) return;
+    try {
+      const { error } = await supabase
+        .from('recipes')
+        .update({ is_published: publish })
+        .in('id', Array.from(selectedIds))
+        .eq('user_id', user?.id);
+      if (error) throw error;
+      toast({
+        title: publish
+          ? `${selectedIds.size} recipe(s) published`
+          : `${selectedIds.size} recipe(s) unpublished`,
+      });
+      exitSelectionMode();
+      fetchMyRecipes();
+    } catch (error) {
+      console.error('Error bulk publish:', error);
+      toast({ title: 'Error', description: 'Failed to update recipes', variant: 'destructive' });
+    }
+  };
+
   const handleAssignToCategory = async (categoryId: string | null) => {
     if (selectedIds.size === 0) return;
     const success = await assignRecipesToCategory(Array.from(selectedIds), categoryId);
@@ -751,7 +773,7 @@ export default function MyRecipes() {
 
           {/* Selection toolbar */}
           {selectionMode && (
-            <div className="flex items-center justify-between gap-3 mb-6 p-3 rounded-lg bg-muted/50 border border-border">
+            <div className="flex flex-wrap items-center gap-3 mb-6 p-3 rounded-lg bg-muted/50 border border-border">
               <div className="flex items-center gap-3">
                 <Checkbox
                   checked={filteredRecipes.length > 0 && selectedIds.size === filteredRecipes.length}
@@ -763,7 +785,7 @@ export default function MyRecipes() {
                     : (language === 'zh' ? '全选' : 'Select all')}
                 </span>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap flex-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" variant="outline" disabled={selectedIds.size === 0}>
@@ -801,6 +823,24 @@ export default function MyRecipes() {
                     <DropdownMenuItem onClick={() => downloadMultipleRecipesAsCsv(selectedRecipes, language)}>
                       <FileSpreadsheet className="h-4 w-4 mr-2" />
                       CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" disabled={selectedIds.size === 0}>
+                      <Globe className="h-4 w-4 mr-2" />
+                      {language === 'zh' ? '发布' : 'Publish'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => handleBulkPublish(true)}>
+                      <Globe className="h-4 w-4 mr-2" />
+                      {language === 'zh' ? '发布到社区' : 'Publish to Community'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkPublish(false)}>
+                      <Lock className="h-4 w-4 mr-2" />
+                      {language === 'zh' ? '取消发布' : 'Unpublish'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
