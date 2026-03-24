@@ -150,8 +150,8 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
                 size="icon"
                 variant="default"
                 className={cn(
-                  "absolute top-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-all",
-                  user && onAddToMealPlan ? "right-[6.5rem]" : user ? "right-14" : "right-3"
+                  "absolute top-3 h-8 w-8 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100",
+                  user && onAddToMealPlan ? "right-[6.5rem] md:right-[6.5rem]" : user ? "right-14" : "right-3"
                 )}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
               >
