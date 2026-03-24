@@ -56,20 +56,20 @@ export default function Recipes() {
 
   return (
     <Layout>
-      <div className="container py-8">
+      <div className="container py-4 md:py-8">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="font-display text-3xl md:text-4xl font-bold mb-2 flex items-center gap-2">
-            <Globe className="h-7 w-7" />
+        <div className="mb-4 md:mb-6">
+          <h1 className="font-display text-xl md:text-4xl font-bold mb-1 md:mb-2 flex items-center gap-2">
+            <Globe className="h-5 w-5 md:h-7 md:w-7" />
             {language === 'zh' ? '社区发布' : 'Community Recipes'}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-xs md:text-base text-muted-foreground">
             {language === 'zh' ? '浏览社区用户发布的菜谱' : 'Browse recipes published by the community'}
           </p>
         </div>
 
         {/* Search bar */}
-        <div className="flex gap-2 mb-8">
+        <div className="flex gap-2 mb-4 md:mb-8">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -77,10 +77,10 @@ export default function Recipes() {
               value={filters.query}
               onChange={(e) => setFilters({ ...filters, query: e.target.value })}
               onKeyDown={handleKeyDown}
-              className="pl-10 h-12 text-base bg-card border-border/50 focus:border-primary"
+              className="pl-10 h-10 md:h-12 text-sm md:text-base bg-card border-border/50 focus:border-primary"
             />
           </div>
-          <Button onClick={handleSearch} className="h-12 px-6 btn-primary-gradient border-0">
+          <Button onClick={handleSearch} className="h-10 md:h-12 px-4 md:px-6 text-sm btn-primary-gradient border-0">
             {t('recipes.search')}
           </Button>
         </div>
