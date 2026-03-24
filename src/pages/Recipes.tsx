@@ -4,9 +4,8 @@ import { SearchFilters, Recipe } from '@/types/recipe';
 import { useRecipeSearch, SortOption } from '@/hooks/useRecipeSearch';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useFilterOptions } from '@/hooks/useFilterOptions';
-import { translateFilterValue, getTimeRangeLabel } from '@/contexts/LanguageContext';
-import { TIME_RANGES } from '@/types/recipe';
+import { getTimeRangeLabel } from '@/contexts/LanguageContext';
+import { TIME_RANGES, CUISINE_TYPES } from '@/types/recipe';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +22,7 @@ export default function Recipes() {
   const [filters, setFilters] = useState<SearchFilters>({ query: '' });
   const { toast } = useToast();
   const { t, language } = useLanguage();
-  const { cuisines, mealTypes } = useFilterOptions();
+  
 
   const communitySearch = useRecipeSearch({ source: 'community' });
 
@@ -52,7 +51,7 @@ export default function Recipes() {
     communitySearch.searchRecipes(newFilters);
   };
 
-  const activeFiltersCount = [filters.cuisineType, filters.mealType, filters.time].filter(Boolean).length;
+  const activeFiltersCount = [filters.cuisineType, filters.time].filter(Boolean).length;
 
   const handleLoadMore = () => {
     communitySearch.loadMore(filters);
@@ -91,26 +90,11 @@ export default function Recipes() {
         <div className="flex flex-wrap gap-2 mb-4">
           <Select value={filters.cuisineType || ''} onValueChange={(v) => handleFilterChange('cuisineType', v)}>
             <SelectTrigger className="w-[120px] md:w-[160px] h-9 text-xs md:text-sm bg-card">
-              <SelectValue placeholder={language === 'zh' ? '菜系' : 'Cuisine'} />
+              <SelectValue placeholder={language === 'zh' ? '类别' : 'Category'} />
             </SelectTrigger>
             <SelectContent>
-              {cuisines.map((cuisine) => (
-                <SelectItem key={cuisine} value={cuisine}>
-                  {translateFilterValue(cuisine, language, 'cuisine')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filters.mealType || ''} onValueChange={(v) => handleFilterChange('mealType', v)}>
-            <SelectTrigger className="w-[120px] md:w-[140px] h-9 text-xs md:text-sm bg-card">
-              <SelectValue placeholder={language === 'zh' ? '餐类' : 'Meal Type'} />
-            </SelectTrigger>
-            <SelectContent>
-              {mealTypes.map((meal) => (
-                <SelectItem key={meal} value={meal}>
-                  {translateFilterValue(meal, language, 'mealType')}
-                </SelectItem>
+              {CUISINE_TYPES.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -141,14 +125,8 @@ export default function Recipes() {
           <div className="flex flex-wrap gap-2 mb-4">
             {filters.cuisineType && (
               <Badge variant="secondary" className="gap-1 text-xs">
-                {translateFilterValue(filters.cuisineType, language, 'cuisine')}
+                {filters.cuisineType}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange('cuisineType', '')} />
-              </Badge>
-            )}
-            {filters.mealType && (
-              <Badge variant="secondary" className="gap-1 text-xs">
-                {translateFilterValue(filters.mealType, language, 'mealType')}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange('mealType', '')} />
               </Badge>
             )}
             {filters.time && (
