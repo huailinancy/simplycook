@@ -248,6 +248,12 @@ export function Header() {
                     {t('nav.imported')}
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/change-password" className="cursor-pointer">
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    {language === 'zh' ? '修改密码' : 'Change Password'}
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => signOut()}
