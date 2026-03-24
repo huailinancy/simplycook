@@ -182,22 +182,22 @@ export default function SavedRecipes() {
 
   return (
     <Layout>
-      <div className="container py-8">
+      <div className="container py-4 md:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
+        <div className="mb-4 md:mb-8">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <Bookmark className="h-8 w-8 text-primary" />
-                <h1 className="font-display text-3xl md:text-4xl font-bold">
+              <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+                <Bookmark className="h-5 w-5 md:h-8 md:w-8 text-primary" />
+                <h1 className="font-display text-xl md:text-4xl font-bold">
                   {t('saved.title')}
                 </h1>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-xs md:text-base text-muted-foreground">
                 {t('saved.subtitle')}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2">
               {recipes.length > 0 && !selectMode && (
                 <Button
                   variant="outline"
