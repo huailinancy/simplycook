@@ -129,6 +129,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   };
 
+  const updatePassword = async (newPassword: string): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { error: error.message };
+    return { error: null };
+  };
+
   const updateUserProfile = async (profile: Partial<UserProfile>): Promise<{ error: string | null }> => {
     if (!user) {
       return { error: 'Not authenticated' };
