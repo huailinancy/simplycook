@@ -138,6 +138,36 @@ export default function FoodLog() {
     fetchEntries();
   }, [fetchEntries]);
 
+  // Fetch all dishes for the calendar month view
+  const fetchMonthDishes = useCallback(async () => {
+    if (!user || !showCalendar) return;
+    const monthStart = format(startOfMonth(calendarMonth), 'yyyy-MM-dd');
+    const monthEnd = format(endOfMonth(calendarMonth), 'yyyy-MM-dd');
+    const foodLogsTable = supabase.from('food_logs') as any;
+    const { data, error } = await foodLogsTable
+      .select('log_date, description')
+      .eq('user_id', user.id)
+      .gte('log_date', monthStart)
+      .lte('log_date', monthEnd)
+      .not('description', 'is', null)
+      .order('log_date', { ascending: true });
+
+    if (error) { console.error(error); return; }
+
+    const grouped: Record<string, string[]> = {};
+    (data ?? []).forEach((row: any) => {
+      const d = row.log_date as string;
+      if (!row.description) return;
+      if (!grouped[d]) grouped[d] = [];
+      grouped[d].push(row.description);
+    });
+    setMonthDishes(grouped);
+  }, [user, showCalendar, calendarMonth]);
+
+  useEffect(() => {
+    fetchMonthDishes();
+  }, [fetchMonthDishes]);
+
   const updateLocalItem = (mealType: MealType, tempId: string, updates: Partial<FoodLogItem>) => {
     setEntries((prev) => ({
       ...prev,
