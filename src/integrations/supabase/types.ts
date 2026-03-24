@@ -22,6 +22,7 @@ export type Database = {
           log_date: string
           meal_type: string
           photo_url: string | null
+          sort_order: number
           updated_at: string
           user_id: string
         }
@@ -32,6 +33,7 @@ export type Database = {
           log_date?: string
           meal_type: string
           photo_url?: string | null
+          sort_order?: number
           updated_at?: string
           user_id: string
         }
@@ -42,6 +44,7 @@ export type Database = {
           log_date?: string
           meal_type?: string
           photo_url?: string | null
+          sort_order?: number
           updated_at?: string
           user_id?: string
         }
