@@ -171,7 +171,7 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
 
         {/* Quick log to food diary */}
         {showQuickLog && user && (
-          <Dialog open={logOpen} onOpenChange={setLogOpen}>
+          <Dialog open={logOpen} onOpenChange={(open) => { setLogOpen(open); if (!open) { setAskingImage(false); setSelectedMealType(null); } }}>
             <Button
               size="icon"
               variant="default"
