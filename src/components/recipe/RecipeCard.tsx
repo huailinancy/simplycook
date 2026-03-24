@@ -190,26 +190,44 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
             <DialogContent className="max-w-[280px] rounded-2xl p-4" onClick={(e) => e.stopPropagation()}>
               <DialogHeader>
                 <DialogTitle className="text-center text-base">
-                  {language === 'zh' ? '快速记录到今天' : 'Quick log for today'}
+                  {askingImage
+                    ? (language === 'zh' ? '是否使用菜谱图片？' : 'Use recipe photo?')
+                    : (language === 'zh' ? '快速记录到今天' : 'Quick log for today')}
                 </DialogTitle>
               </DialogHeader>
-              <div className="mt-2 flex flex-col gap-2">
-                {([
-                  ['breakfast', '🌅', '早餐'],
-                  ['lunch', '☀️', '午餐'],
-                  ['dinner', '🌙', '晚餐'],
-                ] as const).map(([type, icon, zhLabel]) => (
-                  <Button
-                    key={type}
-                    variant="outline"
-                    className="justify-start gap-2"
-                    onClick={(e) => handleQuickLog(type, e)}
-                  >
-                    <span>{icon}</span>
-                    <span>{language === 'zh' ? zhLabel : type.charAt(0).toUpperCase() + type.slice(1)}</span>
-                  </Button>
-                ))}
-              </div>
+              {askingImage ? (
+                <div className="mt-2 space-y-2">
+                  {recipe.image && (
+                    <img src={recipe.image} alt={recipe.label} className="w-full h-32 object-cover rounded-lg" />
+                  )}
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => handleQuickLog(false)}>
+                      {language === 'zh' ? '不使用' : 'No'}
+                    </Button>
+                    <Button className="flex-1" onClick={() => handleQuickLog(true)}>
+                      {language === 'zh' ? '使用' : 'Yes'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2 flex flex-col gap-2">
+                  {([
+                    ['breakfast', '🌅', '早餐'],
+                    ['lunch', '☀️', '午餐'],
+                    ['dinner', '🌙', '晚餐'],
+                  ] as const).map(([type, icon, zhLabel]) => (
+                    <Button
+                      key={type}
+                      variant="outline"
+                      className="justify-start gap-2"
+                      onClick={(e) => handleMealTypeSelect(type, e)}
+                    >
+                      <span>{icon}</span>
+                      <span>{language === 'zh' ? zhLabel : type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                    </Button>
+                  ))}
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         )}
