@@ -69,7 +69,103 @@ const buildEntriesFromRows = (rows: any[] = []): Record<MealType, FoodLogItem[]>
   return grouped;
 };
 
-export default function FoodLog() {
+function MonthCalendarView({
+  calendarMonth,
+  selectedDate,
+  monthDishes,
+  language,
+  onSelectDate,
+  onPrevMonth,
+  onNextMonth,
+}: {
+  calendarMonth: Date;
+  selectedDate: Date;
+  monthDishes: Record<string, string[]>;
+  language: string;
+  onSelectDate: (d: Date) => void;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+}) {
+  const monthStart = startOfMonth(calendarMonth);
+  const monthEnd = endOfMonth(calendarMonth);
+  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const startDayOfWeek = getDay(monthStart); // 0=Sun
+
+  const weekLabels = language === 'zh'
+    ? ['日', '一', '二', '三', '四', '五', '六']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  return (
+    <Card className="max-w-2xl mx-auto mb-4 overflow-hidden">
+      <CardContent className="p-3 md:p-4">
+        <div className="flex items-center justify-between mb-3">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onPrevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <p className="text-sm font-semibold">
+            {format(calendarMonth, language === 'zh' ? 'yyyy年M月' : 'MMMM yyyy')}
+          </p>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onNextMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-px">
+          {weekLabels.map((l) => (
+            <div key={l} className="text-center text-[10px] font-medium text-muted-foreground py-1">
+              {l}
+            </div>
+          ))}
+
+          {Array.from({ length: startDayOfWeek }).map((_, i) => (
+            <div key={`empty-${i}`} />
+          ))}
+
+          {days.map((day) => {
+            const key = format(day, 'yyyy-MM-dd');
+            const dishes = monthDishes[key] ?? [];
+            const isSelected = isSameDay(day, selectedDate);
+            const isToday = isSameDay(day, new Date());
+
+            return (
+              <button
+                key={key}
+                onClick={() => onSelectDate(day)}
+                className={cn(
+                  'flex flex-col items-start p-1 rounded-lg text-left min-h-[60px] md:min-h-[80px] transition-colors hover:bg-accent/50 border border-transparent',
+                  isSelected && 'border-primary bg-primary/5',
+                  isToday && !isSelected && 'bg-accent/30'
+                )}
+              >
+                <span className={cn(
+                  'text-[11px] font-medium mb-0.5',
+                  isSelected && 'text-primary',
+                  !isSameMonth(day, calendarMonth) && 'text-muted-foreground/40'
+                )}>
+                  {format(day, 'd')}
+                </span>
+                {dishes.length > 0 && (
+                  <div className="w-full space-y-0">
+                    {dishes.slice(0, 3).map((name, i) => (
+                      <p key={i} className="text-[9px] md:text-[10px] text-foreground/70 leading-tight truncate w-full">
+                        {name}
+                      </p>
+                    ))}
+                    {dishes.length > 3 && (
+                      <p className="text-[9px] text-muted-foreground">+{dishes.length - 3}</p>
+                    )}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const { toast } = useToast();
