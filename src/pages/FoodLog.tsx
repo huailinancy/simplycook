@@ -600,14 +600,16 @@ export default function FoodLog() {
                             <p className="text-xs font-medium text-muted-foreground">
                               {language === 'zh' ? `菜品 ${index + 1}` : `Dish ${index + 1}`}
                             </p>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDeleteDish(mealType, item.tempId)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {!item.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteDish(mealType, item.tempId)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
 
                           <Input
@@ -630,12 +632,14 @@ export default function FoodLog() {
                                   alt={item.description || mealLabels[mealType]}
                                   className="h-20 w-20 rounded-lg border border-border object-cover md:h-24 md:w-24"
                                 />
-                                <button
-                                  onClick={() => handleRemovePhoto(mealType, item.tempId)}
-                                  className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
+                                {!item.id && (
+                                  <button
+                                    onClick={() => handleRemovePhoto(mealType, item.tempId)}
+                                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
                               </div>
                             ) : null}
 
