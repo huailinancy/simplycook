@@ -122,6 +122,18 @@ export function Header() {
                         <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                       </div>
                     </div>
+                    <SheetClose asChild>
+                      <Link to="/change-password">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start gap-2"
+                        >
+                          <KeyRound className="h-4 w-4" />
+                          {language === 'zh' ? '修改密码' : 'Change Password'}
+                        </Button>
+                      </Link>
+                    </SheetClose>
                     <Button
                       variant="ghost"
                       size="sm"
