@@ -226,9 +226,9 @@ function Past30DaysReview({ user, language }: { user: { id: string }; language: 
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs w-[110px]">{language === 'zh' ? '日期' : 'Date'}</TableHead>
-                    <TableHead className="text-xs">{language === 'zh' ? '午餐' : 'Lunch'}</TableHead>
-                    <TableHead className="text-xs">{language === 'zh' ? '晚餐' : 'Dinner'}</TableHead>
+                    <TableHead className="text-xs whitespace-nowrap w-[80px]">{language === 'zh' ? '日期' : 'Date'}</TableHead>
+                    <TableHead className="text-xs whitespace-nowrap">{language === 'zh' ? '午餐' : 'Lunch'}</TableHead>
+                    <TableHead className="text-xs whitespace-nowrap">{language === 'zh' ? '晚餐' : 'Dinner'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
