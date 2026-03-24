@@ -125,10 +125,6 @@ export function useRecipeSearch(options: UseRecipeSearchOptions = {}) {
       setCurrentOffset(offset);
       setSortBy(sort);
 
-      toast({
-        title: `Found ${count || 0} recipes`,
-        description: filters.query ? `Searching for "${filters.query}"` : 'Showing all recipes',
-      });
 
     } catch (error) {
       console.error('Error searching recipes:', error);
