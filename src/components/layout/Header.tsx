@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChefHat, Search, Calendar, ShoppingCart, UtensilsCrossed, LogOut, Bookmark, Import, Globe, Menu } from 'lucide-react';
+import { ChefHat, Search, Calendar, ShoppingCart, UtensilsCrossed, LogOut, Bookmark, Import, Globe, Menu, NotebookPen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -53,10 +53,10 @@ export function Header() {
   };
 
   const navItems = [
-    { path: '/', labelKey: 'nav.home', icon: ChefHat, requiresAuth: false },
     { path: '/recipes', labelKey: 'nav.recipes', icon: UtensilsCrossed, requiresAuth: false },
     { path: '/meal-planner', labelKey: 'nav.mealPlanner', icon: Calendar, requiresAuth: false },
     { path: '/grocery-list', labelKey: 'nav.groceryList', icon: ShoppingCart, requiresAuth: false },
+    { path: '/food-log', labelKey: 'nav.foodLog', icon: NotebookPen, requiresAuth: true },
     { path: '/saved', labelKey: 'nav.saved', icon: Bookmark, requiresAuth: true },
     { path: '/my-recipes', labelKey: 'nav.imported', icon: Import, requiresAuth: true },
   ];

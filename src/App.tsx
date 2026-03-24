@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { SavedRecipesProvider } from "@/contexts/SavedRecipesContext";
 import { MealPlanProvider } from "@/contexts/MealPlanContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import Index from "./pages/Index";
 import Recipes from "./pages/Recipes";
 import MealPlanner from "./pages/MealPlanner";
 import GroceryList from "./pages/GroceryList";
@@ -16,6 +15,7 @@ import RecipeDetail from "./pages/RecipeDetail";
 import Onboarding from "./pages/Onboarding";
 import SavedRecipes from "./pages/SavedRecipes";
 import MyRecipes from "./pages/MyRecipes";
+import FoodLog from "./pages/FoodLog";
 import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
@@ -34,11 +34,12 @@ const App = () => (
               <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<Recipes />} />
               <Route path="/recipes" element={<Recipes />} />
               <Route path="/recipe/:id" element={<RecipeDetail />} />
               <Route path="/meal-planner" element={<MealPlanner />} />
               <Route path="/grocery-list" element={<GroceryList />} />
+              <Route path="/food-log" element={<FoodLog />} />
               <Route path="/saved" element={<SavedRecipes />} />
               <Route path="/my-recipes" element={<MyRecipes />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChefHat, UtensilsCrossed, Calendar, ShoppingCart, Bookmark, Import } from 'lucide-react';
+import { UtensilsCrossed, Calendar, ShoppingCart, Bookmark, NotebookPen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -24,10 +24,10 @@ export function MobileBottomNav() {
   };
 
   const navItems = [
-    { path: '/', labelKey: 'nav.home', icon: ChefHat, requiresAuth: false },
     { path: '/recipes', labelKey: 'nav.recipes', icon: UtensilsCrossed, requiresAuth: false },
     { path: '/meal-planner', labelKey: 'nav.mealPlanner', icon: Calendar, requiresAuth: false },
     { path: '/grocery-list', labelKey: 'nav.groceryList', icon: ShoppingCart, requiresAuth: false },
+    { path: '/food-log', labelKey: 'nav.foodLog', icon: NotebookPen, requiresAuth: true },
     { path: '/saved', labelKey: 'nav.saved', icon: Bookmark, requiresAuth: true },
   ];
 
