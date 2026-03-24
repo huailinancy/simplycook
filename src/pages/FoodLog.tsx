@@ -399,7 +399,7 @@ export default function FoodLog() {
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-3 mb-5">
+        <div className="flex items-center justify-center gap-3 mb-2">
           <Button
             variant="ghost"
             size="icon"
@@ -408,14 +408,18 @@ export default function FoodLog() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="text-center min-w-[140px]">
-            <p className="text-sm font-semibold">
+          <button
+            className="text-center min-w-[140px] hover:bg-accent rounded-lg px-3 py-1 transition-colors"
+            onClick={() => { setShowCalendar((v) => !v); setCalendarMonth(selectedDate); }}
+          >
+            <p className="text-sm font-semibold flex items-center justify-center gap-1.5">
               {format(selectedDate, language === 'zh' ? 'yyyy年M月d日' : 'MMMM d, yyyy')}
+              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
             </p>
             <p className="text-xs text-muted-foreground">
-              {format(selectedDate, language === 'zh' ? 'EEEE' : 'EEEE')}
+              {format(selectedDate, language === 'zh' ? 'EEEE' : 'EEEE', { locale: language === 'zh' ? zhCN : undefined })}
             </p>
-          </div>
+          </button>
           <Button
             variant="ghost"
             size="icon"
@@ -425,6 +429,19 @@ export default function FoodLog() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Monthly calendar view */}
+        {showCalendar && (
+          <MonthCalendarView
+            calendarMonth={calendarMonth}
+            selectedDate={selectedDate}
+            monthDishes={monthDishes}
+            language={language}
+            onSelectDate={(d) => { setSelectedDate(d); setShowCalendar(false); }}
+            onPrevMonth={() => setCalendarMonth((m) => subMonths(m, 1))}
+            onNextMonth={() => setCalendarMonth((m) => addMonths(m, 1))}
+          />
+        )}
 
         <div className="space-y-3 md:space-y-4 max-w-2xl mx-auto">
           {MEAL_TYPES.map((mealType) => {
