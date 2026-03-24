@@ -600,14 +600,16 @@ export default function FoodLog() {
                             <p className="text-xs font-medium text-muted-foreground">
                               {language === 'zh' ? `菜品 ${index + 1}` : `Dish ${index + 1}`}
                             </p>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDeleteDish(mealType, item.tempId)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {!item.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteDish(mealType, item.tempId)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
 
                           <Input
