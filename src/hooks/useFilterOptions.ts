@@ -15,25 +15,24 @@ export function useFilterOptions(): FilterOptions {
   useEffect(() => {
     async function fetchFilterOptions() {
       try {
-        // Fetch all recipes
+        // Fetch all recipes (system + published community)
         const { data, error } = await supabase
           .from('recipes')
-          .select('cuisine, meal_type, user_id');
+          .select('cuisine, meal_type, user_id, is_published');
 
         if (error) throw error;
 
-        // Filter to only system recipes (user_id is null/undefined/empty)
-        const systemRecipes = data?.filter(r =>
-          r.user_id === null ||
-          r.user_id === undefined ||
-          r.user_id === ''
+        // Include system recipes AND published community recipes
+        const relevantRecipes = data?.filter(r =>
+          (r.user_id === null || r.user_id === undefined || r.user_id === '') ||
+          r.is_published === true
         ) || [];
 
         // Extract unique cuisines from system recipes only
         const uniqueCuisines = new Set<string>();
         const uniqueMealTypes = new Set<string>();
 
-        systemRecipes.forEach((recipe) => {
+        relevantRecipes.forEach((recipe) => {
           if (recipe.cuisine) {
             uniqueCuisines.add(recipe.cuisine);
           }
