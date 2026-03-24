@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChefHat, UtensilsCrossed, Calendar, ShoppingCart, Bookmark, Import } from 'lucide-react';
+import { UtensilsCrossed, Calendar, ShoppingCart, Bookmark, NotebookPen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
