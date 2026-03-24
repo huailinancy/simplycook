@@ -265,6 +265,7 @@ export default function FoodLog() {
   const [entries, setEntries] = useState<Record<MealType, FoodLogItem[]>>(buildEmptyEntries);
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [monthDishes, setMonthDishes] = useState<Record<string, string[]>>({});
@@ -684,20 +685,26 @@ export default function FoodLog() {
                         <div
                           key={item.tempId}
                           className={cn(
-                            'rounded-xl border border-border bg-card/60 p-3',
-                            index > 0 && 'mt-2'
+                            'rounded-xl border border-border bg-card/60 p-3 cursor-pointer transition-colors',
+                            index > 0 && 'mt-2',
+                            item.id && selectedItemId === item.tempId && 'border-destructive/50 bg-destructive/5'
                           )}
+                          onClick={() => {
+                            if (item.id) {
+                              setSelectedItemId(prev => prev === item.tempId ? null : item.tempId);
+                            }
+                          }}
                         >
                           <div className="mb-2 flex items-center justify-between gap-2">
                             <p className="text-xs font-medium text-muted-foreground">
                               {language === 'zh' ? `菜品 ${index + 1}` : `Dish ${index + 1}`}
                             </p>
-                            {!item.id && (
+                            {(!item.id || selectedItemId === item.tempId) && (
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                onClick={() => handleDeleteDish(mealType, item.tempId)}
+                                onClick={(e) => { e.stopPropagation(); handleDeleteDish(mealType, item.tempId); setSelectedItemId(null); }}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
