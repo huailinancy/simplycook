@@ -87,6 +87,79 @@ export default function Recipes() {
           </p>
         </div>
 
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Select value={filters.cuisineType || ''} onValueChange={(v) => handleFilterChange('cuisineType', v)}>
+            <SelectTrigger className="w-[120px] md:w-[160px] h-9 text-xs md:text-sm bg-card">
+              <SelectValue placeholder={language === 'zh' ? '菜系' : 'Cuisine'} />
+            </SelectTrigger>
+            <SelectContent>
+              {cuisines.map((cuisine) => (
+                <SelectItem key={cuisine} value={cuisine}>
+                  {translateFilterValue(cuisine, language, 'cuisine')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filters.mealType || ''} onValueChange={(v) => handleFilterChange('mealType', v)}>
+            <SelectTrigger className="w-[120px] md:w-[140px] h-9 text-xs md:text-sm bg-card">
+              <SelectValue placeholder={language === 'zh' ? '餐类' : 'Meal Type'} />
+            </SelectTrigger>
+            <SelectContent>
+              {mealTypes.map((meal) => (
+                <SelectItem key={meal} value={meal}>
+                  {translateFilterValue(meal, language, 'mealType')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filters.time || ''} onValueChange={(v) => handleFilterChange('time', v)}>
+            <SelectTrigger className="w-[120px] md:w-[140px] h-9 text-xs md:text-sm bg-card">
+              <SelectValue placeholder={language === 'zh' ? '时间' : 'Time'} />
+            </SelectTrigger>
+            <SelectContent>
+              {TIME_RANGES.map((range) => (
+                <SelectItem key={range.value} value={range.value}>
+                  {getTimeRangeLabel(range.value, language)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {activeFiltersCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs text-muted-foreground">
+              <X className="h-3.5 w-3.5 mr-1" />
+              {language === 'zh' ? '清除筛选' : 'Clear'}
+            </Button>
+          )}
+        </div>
+
+        {/* Active filter badges */}
+        {activeFiltersCount > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {filters.cuisineType && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                {translateFilterValue(filters.cuisineType, language, 'cuisine')}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange('cuisineType', '')} />
+              </Badge>
+            )}
+            {filters.mealType && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                {translateFilterValue(filters.mealType, language, 'mealType')}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange('mealType', '')} />
+              </Badge>
+            )}
+            {filters.time && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                {getTimeRangeLabel(filters.time, language)}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange('time', '')} />
+              </Badge>
+            )}
+          </div>
+        )}
+
         {/* Search bar */}
         <div className="flex gap-2 mb-4 md:mb-8">
           <div className="relative flex-1">
