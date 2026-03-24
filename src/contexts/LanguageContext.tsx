@@ -696,7 +696,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
     // Check localStorage for saved preference
     const saved = localStorage.getItem('language');
-    return (saved === 'zh' || saved === 'en') ? saved : 'en';
+    return (saved === 'zh' || saved === 'en') ? saved : 'zh';
   });
 
   const setLanguage = useCallback((lang: Language) => {
