@@ -215,18 +215,18 @@ export default function SavedRecipes() {
 
         {/* Selection action bar */}
         {selectMode && (
-          <div className="mb-4 flex items-center justify-between bg-muted/50 rounded-lg px-4 py-3 border border-border">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={handleCancelSelect}>
-                <X className="h-4 w-4 mr-1" />
+          <div className="mb-3 md:mb-4 flex flex-wrap items-center justify-between gap-2 bg-muted/50 rounded-lg px-3 md:px-4 py-2 md:py-3 border border-border">
+            <div className="flex items-center gap-2 md:gap-3">
+              <Button variant="ghost" size="sm" className="h-7 md:h-8 text-xs md:text-sm" onClick={handleCancelSelect}>
+                <X className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1" />
                 {language === 'zh' ? '取消' : 'Cancel'}
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleSelectAll}>
+              <Button variant="ghost" size="sm" className="h-7 md:h-8 text-xs md:text-sm" onClick={handleSelectAll}>
                 {selectedIds.size === recipes.length
                   ? (language === 'zh' ? '取消全选' : 'Deselect All')
                   : (language === 'zh' ? '全选' : 'Select All')}
               </Button>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs md:text-sm text-muted-foreground">
                 {language === 'zh'
                   ? `已选 ${selectedIds.size} 个`
                   : `${selectedIds.size} selected`}

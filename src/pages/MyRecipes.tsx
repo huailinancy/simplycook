@@ -663,24 +663,24 @@ export default function MyRecipes() {
               </div>
             )}
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 md:gap-3">
               {/* All filter */}
               <div
                 onClick={() => setActiveCategoryFilter(null)}
                 className={`
-                  cursor-pointer select-none flex flex-col items-center justify-center gap-1.5
-                  min-w-[100px] w-[110px] h-[100px] rounded-lg border-2 p-3
+                  cursor-pointer select-none flex flex-col items-center justify-center gap-1
+                  min-w-[70px] w-[80px] h-[76px] md:min-w-[100px] md:w-[110px] md:h-[100px] rounded-lg border-2 p-2 md:p-3
                   transition-all duration-200 text-center
                   ${activeCategoryFilter === null
                     ? 'border-primary bg-primary/10 shadow-md'
                     : 'border-border bg-card hover:border-primary/40 hover:bg-muted/60'}
                 `}
               >
-                <Folder className={`h-8 w-8 ${activeCategoryFilter === null ? 'text-primary' : 'text-muted-foreground'}`} />
-                <span className={`text-xs font-medium ${activeCategoryFilter === null ? 'text-primary' : 'text-foreground'}`}>
+                <Folder className={`h-6 w-6 md:h-8 md:w-8 ${activeCategoryFilter === null ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={`text-[10px] md:text-xs font-medium ${activeCategoryFilter === null ? 'text-primary' : 'text-foreground'}`}>
                   {language === 'zh' ? '全部' : 'All'}
                 </span>
-                <span className="text-[10px] text-muted-foreground">({recipes.length})</span>
+                <span className="text-[9px] md:text-[10px] text-muted-foreground">({recipes.length})</span>
               </div>
 
               {/* Category filters - droppable */}
