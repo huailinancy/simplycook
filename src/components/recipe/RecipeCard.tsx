@@ -52,11 +52,23 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
     }
   };
 
-  const handleQuickLog = async (mealType: 'breakfast' | 'lunch' | 'dinner', e: React.MouseEvent) => {
+  const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | null>(null);
+  const [askingImage, setAskingImage] = useState(false);
+
+  const handleMealTypeSelect = (mealType: 'breakfast' | 'lunch' | 'dinner', e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) return;
+    setSelectedMealType(mealType);
+    setAskingImage(true);
+  };
+
+  const handleQuickLog = async (useRecipeImage: boolean) => {
+    if (!user || !selectedMealType) return;
+    setAskingImage(false);
     setLogOpen(false);
+
+    const mealType = selectedMealType;
+    setSelectedMealType(null);
 
     const dateStr = format(new Date(), 'yyyy-MM-dd');
     const foodLogsTable = supabase.from('food_logs') as any;
@@ -79,6 +91,7 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
       log_date: dateStr,
       meal_type: mealType,
       description: recipe.label,
+      photo_url: useRecipeImage ? recipe.image : null,
       sort_order: nextSortOrder,
     });
 
@@ -158,7 +171,7 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
 
         {/* Quick log to food diary */}
         {showQuickLog && user && (
-          <Dialog open={logOpen} onOpenChange={setLogOpen}>
+          <Dialog open={logOpen} onOpenChange={(open) => { setLogOpen(open); if (!open) { setAskingImage(false); setSelectedMealType(null); } }}>
             <Button
               size="icon"
               variant="default"
@@ -177,26 +190,44 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
             <DialogContent className="max-w-[280px] rounded-2xl p-4" onClick={(e) => e.stopPropagation()}>
               <DialogHeader>
                 <DialogTitle className="text-center text-base">
-                  {language === 'zh' ? '快速记录到今天' : 'Quick log for today'}
+                  {askingImage
+                    ? (language === 'zh' ? '是否使用菜谱图片？' : 'Use recipe photo?')
+                    : (language === 'zh' ? '快速记录到今天' : 'Quick log for today')}
                 </DialogTitle>
               </DialogHeader>
-              <div className="mt-2 flex flex-col gap-2">
-                {([
-                  ['breakfast', '🌅', '早餐'],
-                  ['lunch', '☀️', '午餐'],
-                  ['dinner', '🌙', '晚餐'],
-                ] as const).map(([type, icon, zhLabel]) => (
-                  <Button
-                    key={type}
-                    variant="outline"
-                    className="justify-start gap-2"
-                    onClick={(e) => handleQuickLog(type, e)}
-                  >
-                    <span>{icon}</span>
-                    <span>{language === 'zh' ? zhLabel : type.charAt(0).toUpperCase() + type.slice(1)}</span>
-                  </Button>
-                ))}
-              </div>
+              {askingImage ? (
+                <div className="mt-2 space-y-2">
+                  {recipe.image && (
+                    <img src={recipe.image} alt={recipe.label} className="w-full h-32 object-cover rounded-lg" />
+                  )}
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => handleQuickLog(false)}>
+                      {language === 'zh' ? '不使用' : 'No'}
+                    </Button>
+                    <Button className="flex-1" onClick={() => handleQuickLog(true)}>
+                      {language === 'zh' ? '使用' : 'Yes'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2 flex flex-col gap-2">
+                  {([
+                    ['breakfast', '🌅', '早餐'],
+                    ['lunch', '☀️', '午餐'],
+                    ['dinner', '🌙', '晚餐'],
+                  ] as const).map(([type, icon, zhLabel]) => (
+                    <Button
+                      key={type}
+                      variant="outline"
+                      className="justify-start gap-2"
+                      onClick={(e) => handleMealTypeSelect(type, e)}
+                    >
+                      <span>{icon}</span>
+                      <span>{language === 'zh' ? zhLabel : type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                    </Button>
+                  ))}
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         )}

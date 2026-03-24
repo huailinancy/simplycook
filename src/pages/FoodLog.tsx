@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format, addDays, subDays } from 'date-fns';
-import { ChevronLeft, ChevronRight, Camera, Plus, X, UtensilsCrossed, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Camera, Plus, X, UtensilsCrossed, Trash2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,9 +35,9 @@ const createEmptyItem = (mealType: MealType, sortOrder = 0): FoodLogItem => ({
 });
 
 const buildEmptyEntries = (): Record<MealType, FoodLogItem[]> => ({
-  breakfast: [createEmptyItem('breakfast')],
-  lunch: [createEmptyItem('lunch')],
-  dinner: [createEmptyItem('dinner')],
+  breakfast: [],
+  lunch: [],
+  dinner: [],
 });
 
 const buildEntriesFromRows = (rows: any[] = []): Record<MealType, FoodLogItem[]> => {
@@ -63,9 +63,6 @@ const buildEntriesFromRows = (rows: any[] = []): Record<MealType, FoodLogItem[]>
 
   MEAL_TYPES.forEach((mealType) => {
     grouped[mealType].sort((a, b) => a.sort_order - b.sort_order);
-    if (grouped[mealType].length === 0) {
-      grouped[mealType] = [createEmptyItem(mealType)];
-    }
   });
 
   return grouped;
@@ -79,6 +76,11 @@ export default function FoodLog() {
   const [entries, setEntries] = useState<Record<MealType, FoodLogItem[]>>(buildEmptyEntries);
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [expandedMeals, setExpandedMeals] = useState<Record<MealType, boolean>>({
+    breakfast: false,
+    lunch: false,
+    dinner: false,
+  });
 
   const mealLabels: Record<MealType, string> = {
     breakfast: language === 'zh' ? '早餐' : 'Breakfast',
@@ -93,6 +95,18 @@ export default function FoodLog() {
   };
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+  // Determine if a meal has saved content
+  const mealHasContent = (mealType: MealType) =>
+    entries[mealType].some((item) => item.id || item.description || item.photo_url);
+
+  const isMealExpanded = (mealType: MealType) =>
+    expandedMeals[mealType] || mealHasContent(mealType);
+
+  const toggleMealExpanded = (mealType: MealType) => {
+    if (mealHasContent(mealType)) return; // always expanded if has content
+    setExpandedMeals((prev) => ({ ...prev, [mealType]: !prev[mealType] }));
+  };
 
   const fetchEntries = useCallback(async () => {
     if (!user) return;
@@ -110,7 +124,10 @@ export default function FoodLog() {
       return;
     }
 
-    setEntries(buildEntriesFromRows(data ?? []));
+    const built = buildEntriesFromRows(data ?? []);
+    setEntries(built);
+    // Reset expanded state for empty meals
+    setExpandedMeals({ breakfast: false, lunch: false, dinner: false });
   }, [user, dateStr]);
 
   useEffect(() => {
@@ -202,6 +219,8 @@ export default function FoodLog() {
       ...prev,
       [mealType]: [...prev[mealType], createEmptyItem(mealType, nextSortOrder)],
     }));
+    // Ensure expanded
+    setExpandedMeals((prev) => ({ ...prev, [mealType]: true }));
   };
 
   const handleDescriptionChange = (mealType: MealType, tempId: string, value: string) => {
@@ -274,7 +293,7 @@ export default function FoodLog() {
       const nextItems = prev[mealType].filter((entry) => entry.tempId !== tempId);
       return {
         ...prev,
-        [mealType]: nextItems.length > 0 ? nextItems : [createEmptyItem(mealType)],
+        [mealType]: nextItems,
       };
     });
 
@@ -374,103 +393,143 @@ export default function FoodLog() {
         </div>
 
         <div className="space-y-3 md:space-y-4 max-w-2xl mx-auto">
-          {MEAL_TYPES.map((mealType) => (
-            <Card key={mealType} className="overflow-hidden">
-              <CardContent className="p-3 md:p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{mealIcons[mealType]}</span>
-                    <h3 className="text-sm md:text-base font-semibold">{mealLabels[mealType]}</h3>
-                  </div>
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleAddDish(mealType)}>
-                    <Plus className="h-3.5 w-3.5" />
-                    {language === 'zh' ? '添加菜品' : 'Add dish'}
-                  </Button>
-                </div>
+          {MEAL_TYPES.map((mealType) => {
+            const expanded = isMealExpanded(mealType);
+            const hasContent = mealHasContent(mealType);
+            const itemCount = entries[mealType].filter(i => i.id || i.description).length;
 
-                <div className="space-y-3">
-                  {entries[mealType].map((item, index) => (
-                    <div
-                      key={item.tempId}
-                      className={cn(
-                        'rounded-xl border border-border bg-card/60 p-3',
-                        index > 0 && 'mt-2'
+            return (
+              <Card key={mealType} className="overflow-hidden">
+                <CardContent className="p-3 md:p-4">
+                  <div
+                    className={cn(
+                      "flex items-center justify-between",
+                      !hasContent && "cursor-pointer"
+                    )}
+                    onClick={() => !hasContent && toggleMealExpanded(mealType)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{mealIcons[mealType]}</span>
+                      <h3 className="text-sm md:text-base font-semibold">{mealLabels[mealType]}</h3>
+                      {!expanded && itemCount === 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {language === 'zh' ? '点击展开' : 'Tap to expand'}
+                        </span>
                       )}
-                    >
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          {language === 'zh' ? `菜品 ${index + 1}` : `Dish ${index + 1}`}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteDish(mealType, item.tempId)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-
-                      <Input
-                        placeholder={language === 'zh' ? '输入菜名' : 'Enter dish name'}
-                        value={item.description}
-                        onChange={(e) => handleDescriptionChange(mealType, item.tempId, e.target.value)}
-                        onBlur={() => {
-                          if (item.description || item.photo_url) {
-                            saveDish(mealType, item.tempId);
-                          }
-                        }}
-                        className="mb-3 text-sm"
-                      />
-
-                      <div className="flex flex-wrap items-start gap-3">
-                        {item.photo_url ? (
-                          <div className="relative group">
-                            <img
-                              src={item.photo_url}
-                              alt={item.description || mealLabels[mealType]}
-                              className="h-20 w-20 rounded-lg border border-border object-cover md:h-24 md:w-24"
-                            />
-                            <button
-                              onClick={() => handleRemovePhoto(mealType, item.tempId)}
-                              className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ) : null}
-
-                        <label className="cursor-pointer">
-                          <div className={cn(
-                            'flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 transition-colors hover:border-primary hover:bg-primary/5',
-                            uploading === item.tempId && 'opacity-50'
-                          )}>
-                            <Camera className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">
-                              {uploading === item.tempId
-                                ? (language === 'zh' ? '上传中...' : 'Uploading...')
-                                : (language === 'zh' ? '添加照片' : 'Add Photo')}
-                            </span>
-                          </div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            disabled={uploading === item.tempId}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handlePhotoUpload(mealType, item.tempId, file);
-                              e.target.value = '';
-                            }}
-                          />
-                        </label>
-                      </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddDish(mealType);
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        {language === 'zh' ? '添加' : 'Add'}
+                      </Button>
+                      {!hasContent && (
+                        <ChevronDown className={cn(
+                          "h-4 w-4 text-muted-foreground transition-transform",
+                          expanded && "rotate-180"
+                        )} />
+                      )}
+                    </div>
+                  </div>
+
+                  {expanded && entries[mealType].length > 0 && (
+                    <div className="space-y-3 mt-3">
+                      {entries[mealType].map((item, index) => (
+                        <div
+                          key={item.tempId}
+                          className={cn(
+                            'rounded-xl border border-border bg-card/60 p-3',
+                            index > 0 && 'mt-2'
+                          )}
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              {language === 'zh' ? `菜品 ${index + 1}` : `Dish ${index + 1}`}
+                            </p>
+                            {/* Only show delete for unsaved items (no id) */}
+                            {!item.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeleteDish(mealType, item.tempId)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+
+                          <Input
+                            placeholder={language === 'zh' ? '输入菜名' : 'Enter dish name'}
+                            value={item.description}
+                            onChange={(e) => handleDescriptionChange(mealType, item.tempId, e.target.value)}
+                            onBlur={() => {
+                              if (item.description || item.photo_url) {
+                                saveDish(mealType, item.tempId);
+                              }
+                            }}
+                            className="mb-3 text-sm"
+                          />
+
+                          <div className="flex flex-wrap items-start gap-3">
+                            {item.photo_url ? (
+                              <div className="relative group">
+                                <img
+                                  src={item.photo_url}
+                                  alt={item.description || mealLabels[mealType]}
+                                  className="h-20 w-20 rounded-lg border border-border object-cover md:h-24 md:w-24"
+                                />
+                                {!item.id && (
+                                  <button
+                                    onClick={() => handleRemovePhoto(mealType, item.tempId)}
+                                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            ) : null}
+
+                            <label className="cursor-pointer">
+                              <div className={cn(
+                                'flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 transition-colors hover:border-primary hover:bg-primary/5',
+                                uploading === item.tempId && 'opacity-50'
+                              )}>
+                                <Camera className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">
+                                  {uploading === item.tempId
+                                    ? (language === 'zh' ? '上传中...' : 'Uploading...')
+                                    : (language === 'zh' ? '添加照片' : 'Add Photo')}
+                                </span>
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={uploading === item.tempId}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handlePhotoUpload(mealType, item.tempId, file);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {hasAnyContent && (
