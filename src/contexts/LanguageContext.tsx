@@ -215,7 +215,7 @@ const translations: Record<Language, Record<string, string>> = {
   },
   zh: {
     // Navigation
-    'nav.home': '首页',
+    'nav.foodLog': '记录',
     'nav.recipes': '食谱',
     'nav.mealPlanner': '膳食计划',
     'nav.groceryList': '购物清单',
