@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { format, addDays, subDays } from 'date-fns';
-import { ChevronLeft, ChevronRight, Camera, Plus, X, UtensilsCrossed, Trash2, ChevronDown } from 'lucide-react';
+import { format, addDays, subDays, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import { ChevronLeft, ChevronRight, Camera, Plus, X, UtensilsCrossed, Trash2, ChevronDown, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -68,6 +69,102 @@ const buildEntriesFromRows = (rows: any[] = []): Record<MealType, FoodLogItem[]>
   return grouped;
 };
 
+function MonthCalendarView({
+  calendarMonth,
+  selectedDate,
+  monthDishes,
+  language,
+  onSelectDate,
+  onPrevMonth,
+  onNextMonth,
+}: {
+  calendarMonth: Date;
+  selectedDate: Date;
+  monthDishes: Record<string, string[]>;
+  language: string;
+  onSelectDate: (d: Date) => void;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+}) {
+  const monthStart = startOfMonth(calendarMonth);
+  const monthEnd = endOfMonth(calendarMonth);
+  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const startDayOfWeek = getDay(monthStart); // 0=Sun
+
+  const weekLabels = language === 'zh'
+    ? ['日', '一', '二', '三', '四', '五', '六']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  return (
+    <Card className="max-w-2xl mx-auto mb-4 overflow-hidden">
+      <CardContent className="p-3 md:p-4">
+        <div className="flex items-center justify-between mb-3">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onPrevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <p className="text-sm font-semibold">
+            {format(calendarMonth, language === 'zh' ? 'yyyy年M月' : 'MMMM yyyy')}
+          </p>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onNextMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-px">
+          {weekLabels.map((l) => (
+            <div key={l} className="text-center text-[10px] font-medium text-muted-foreground py-1">
+              {l}
+            </div>
+          ))}
+
+          {Array.from({ length: startDayOfWeek }).map((_, i) => (
+            <div key={`empty-${i}`} />
+          ))}
+
+          {days.map((day) => {
+            const key = format(day, 'yyyy-MM-dd');
+            const dishes = monthDishes[key] ?? [];
+            const isSelected = isSameDay(day, selectedDate);
+            const isToday = isSameDay(day, new Date());
+
+            return (
+              <button
+                key={key}
+                onClick={() => onSelectDate(day)}
+                className={cn(
+                  'flex flex-col items-start p-1 rounded-lg text-left min-h-[60px] md:min-h-[80px] transition-colors hover:bg-accent/50 border border-transparent',
+                  isSelected && 'border-primary bg-primary/5',
+                  isToday && !isSelected && 'bg-accent/30'
+                )}
+              >
+                <span className={cn(
+                  'text-[11px] font-medium mb-0.5',
+                  isSelected && 'text-primary',
+                  !isSameMonth(day, calendarMonth) && 'text-muted-foreground/40'
+                )}>
+                  {format(day, 'd')}
+                </span>
+                {dishes.length > 0 && (
+                  <div className="w-full space-y-0">
+                    {dishes.slice(0, 3).map((name, i) => (
+                      <p key={i} className="text-[9px] md:text-[10px] text-foreground/70 leading-tight truncate w-full">
+                        {name}
+                      </p>
+                    ))}
+                    {dishes.length > 3 && (
+                      <p className="text-[9px] text-muted-foreground">+{dishes.length - 3}</p>
+                    )}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function FoodLog() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
@@ -76,6 +173,9 @@ export default function FoodLog() {
   const [entries, setEntries] = useState<Record<MealType, FoodLogItem[]>>(buildEmptyEntries);
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [monthDishes, setMonthDishes] = useState<Record<string, string[]>>({});
   const [expandedMeals, setExpandedMeals] = useState<Record<MealType, boolean>>({
     breakfast: false,
     lunch: false,
@@ -133,6 +233,36 @@ export default function FoodLog() {
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
+
+  // Fetch all dishes for the calendar month view
+  const fetchMonthDishes = useCallback(async () => {
+    if (!user || !showCalendar) return;
+    const monthStart = format(startOfMonth(calendarMonth), 'yyyy-MM-dd');
+    const monthEnd = format(endOfMonth(calendarMonth), 'yyyy-MM-dd');
+    const foodLogsTable = supabase.from('food_logs') as any;
+    const { data, error } = await foodLogsTable
+      .select('log_date, description')
+      .eq('user_id', user.id)
+      .gte('log_date', monthStart)
+      .lte('log_date', monthEnd)
+      .not('description', 'is', null)
+      .order('log_date', { ascending: true });
+
+    if (error) { console.error(error); return; }
+
+    const grouped: Record<string, string[]> = {};
+    (data ?? []).forEach((row: any) => {
+      const d = row.log_date as string;
+      if (!row.description) return;
+      if (!grouped[d]) grouped[d] = [];
+      grouped[d].push(row.description);
+    });
+    setMonthDishes(grouped);
+  }, [user, showCalendar, calendarMonth]);
+
+  useEffect(() => {
+    fetchMonthDishes();
+  }, [fetchMonthDishes]);
 
   const updateLocalItem = (mealType: MealType, tempId: string, updates: Partial<FoodLogItem>) => {
     setEntries((prev) => ({
@@ -365,7 +495,7 @@ export default function FoodLog() {
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-3 mb-5">
+        <div className="flex items-center justify-center gap-3 mb-2">
           <Button
             variant="ghost"
             size="icon"
@@ -374,14 +504,18 @@ export default function FoodLog() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="text-center min-w-[140px]">
-            <p className="text-sm font-semibold">
+          <button
+            className="text-center min-w-[140px] hover:bg-accent rounded-lg px-3 py-1 transition-colors"
+            onClick={() => { setShowCalendar((v) => !v); setCalendarMonth(selectedDate); }}
+          >
+            <p className="text-sm font-semibold flex items-center justify-center gap-1.5">
               {format(selectedDate, language === 'zh' ? 'yyyy年M月d日' : 'MMMM d, yyyy')}
+              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
             </p>
             <p className="text-xs text-muted-foreground">
-              {format(selectedDate, language === 'zh' ? 'EEEE' : 'EEEE')}
+              {format(selectedDate, language === 'zh' ? 'EEEE' : 'EEEE', { locale: language === 'zh' ? zhCN : undefined })}
             </p>
-          </div>
+          </button>
           <Button
             variant="ghost"
             size="icon"
@@ -391,6 +525,19 @@ export default function FoodLog() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Monthly calendar view */}
+        {showCalendar && (
+          <MonthCalendarView
+            calendarMonth={calendarMonth}
+            selectedDate={selectedDate}
+            monthDishes={monthDishes}
+            language={language}
+            onSelectDate={(d) => { setSelectedDate(d); setShowCalendar(false); }}
+            onPrevMonth={() => setCalendarMonth((m) => subMonths(m, 1))}
+            onNextMonth={() => setCalendarMonth((m) => addMonths(m, 1))}
+          />
+        )}
 
         <div className="space-y-3 md:space-y-4 max-w-2xl mx-auto">
           {MEAL_TYPES.map((mealType) => {
