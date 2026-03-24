@@ -142,7 +142,41 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
           </Button>
         )}
 
-        {/* Cuisine type */}
+        {/* Quick log to food diary */}
+        {showQuickLog && user && (
+          <Popover open={logOpen} onOpenChange={setLogOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                size="icon"
+                variant="default"
+                className={cn(
+                  "absolute top-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-all",
+                  user && onAddToMealPlan ? "right-[6.5rem]" : user ? "right-14" : "right-3"
+                )}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              >
+                <UtensilsCrossed className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-1" align="end" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+              <div className="flex flex-col gap-0.5">
+                {([['breakfast', '🌅', '早餐'], ['lunch', '☀️', '午餐'], ['dinner', '🌙', '晚餐']] as const).map(([type, icon, zhLabel]) => (
+                  <Button
+                    key={type}
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start gap-2 text-xs"
+                    onClick={(e) => handleQuickLog(type, e)}
+                  >
+                    <span>{icon}</span>
+                    <span>{language === 'zh' ? zhLabel : type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
         {recipe.cuisineType?.[0] && (
           <div className="absolute bottom-3 left-3">
             <Badge className="bg-primary/90 text-primary-foreground backdrop-blur-sm">
