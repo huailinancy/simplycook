@@ -59,20 +59,34 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
     setLogOpen(false);
 
     const dateStr = format(new Date(), 'yyyy-MM-dd');
-    const { error } = await supabase
-      .from('food_logs')
-      .upsert({
-        user_id: user.id,
-        log_date: dateStr,
-        meal_type: mealType,
-        description: recipe.label,
-      }, { onConflict: 'user_id,log_date,meal_type' });
+    const foodLogsTable = supabase.from('food_logs') as any;
+    const { data: latestRows, error: fetchError } = await foodLogsTable
+      .select('sort_order')
+      .eq('user_id', user.id)
+      .eq('log_date', dateStr)
+      .eq('meal_type', mealType)
+      .order('sort_order', { ascending: false })
+      .limit(1);
+
+    if (fetchError) {
+      toast({ title: language === 'zh' ? '记录失败' : 'Failed to log', variant: 'destructive' });
+      return;
+    }
+
+    const nextSortOrder = ((latestRows?.[0]?.sort_order as number | undefined) ?? -1) + 1;
+    const { error } = await foodLogsTable.insert({
+      user_id: user.id,
+      log_date: dateStr,
+      meal_type: mealType,
+      description: recipe.label,
+      sort_order: nextSortOrder,
+    });
 
     const mealLabels = { breakfast: language === 'zh' ? '早餐' : 'Breakfast', lunch: language === 'zh' ? '午餐' : 'Lunch', dinner: language === 'zh' ? '晚餐' : 'Dinner' };
     if (error) {
       toast({ title: language === 'zh' ? '记录失败' : 'Failed to log', variant: 'destructive' });
     } else {
-      toast({ title: language === 'zh' ? `已记录到今日${mealLabels[mealType]}` : `Logged to today's ${mealLabels[mealType]}` });
+      toast({ title: language === 'zh' ? `已添加到今日${mealLabels[mealType]}` : `Added to today's ${mealLabels[mealType]}` });
     }
   };
 

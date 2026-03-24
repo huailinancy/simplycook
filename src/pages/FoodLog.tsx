@@ -11,29 +11,73 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner';
 
-interface FoodLogEntry {
+interface FoodLogItem {
   id?: string;
+  tempId: string;
   meal_type: MealType;
   description: string;
   photo_url: string | null;
+  sort_order: number;
 }
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
+
+const createEmptyItem = (mealType: MealType, sortOrder = 0): FoodLogItem => ({
+  tempId: crypto.randomUUID(),
+  meal_type: mealType,
+  description: '',
+  photo_url: null,
+  sort_order: sortOrder,
+});
+
+const buildEmptyEntries = (): Record<MealType, FoodLogItem[]> => ({
+  breakfast: [createEmptyItem('breakfast')],
+  lunch: [createEmptyItem('lunch')],
+  dinner: [createEmptyItem('dinner')],
+});
+
+const buildEntriesFromRows = (rows: any[] = []): Record<MealType, FoodLogItem[]> => {
+  const grouped: Record<MealType, FoodLogItem[]> = {
+    breakfast: [],
+    lunch: [],
+    dinner: [],
+  };
+
+  rows.forEach((row) => {
+    const mealType = row.meal_type as MealType;
+    if (!MEAL_TYPES.includes(mealType)) return;
+
+    grouped[mealType].push({
+      id: row.id,
+      tempId: row.id ?? crypto.randomUUID(),
+      meal_type: mealType,
+      description: row.description ?? '',
+      photo_url: row.photo_url ?? null,
+      sort_order: row.sort_order ?? 0,
+    });
+  });
+
+  MEAL_TYPES.forEach((mealType) => {
+    grouped[mealType].sort((a, b) => a.sort_order - b.sort_order);
+    if (grouped[mealType].length === 0) {
+      grouped[mealType] = [createEmptyItem(mealType)];
+    }
+  });
+
+  return grouped;
+};
 
 export default function FoodLog() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [entries, setEntries] = useState<Record<MealType, FoodLogEntry>>({
-    breakfast: { meal_type: 'breakfast', description: '', photo_url: null },
-    lunch: { meal_type: 'lunch', description: '', photo_url: null },
-    dinner: { meal_type: 'dinner', description: '', photo_url: null },
-  });
-  const [uploading, setUploading] = useState<MealType | null>(null);
+  const [entries, setEntries] = useState<Record<MealType, FoodLogItem[]>>(buildEmptyEntries);
+  const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const mealLabels: Record<MealType, string> = {
@@ -52,49 +96,134 @@ export default function FoodLog() {
 
   const fetchEntries = useCallback(async () => {
     if (!user) return;
-    const { data, error } = await supabase
-      .from('food_logs')
+
+    const foodLogsTable = supabase.from('food_logs') as any;
+    const { data, error } = await foodLogsTable
       .select('*')
       .eq('user_id', user.id)
-      .eq('log_date', dateStr);
+      .eq('log_date', dateStr)
+      .order('meal_type', { ascending: true })
+      .order('sort_order', { ascending: true });
 
     if (error) {
       console.error('Error fetching food logs:', error);
       return;
     }
 
-    const newEntries: Record<MealType, FoodLogEntry> = {
-      breakfast: { meal_type: 'breakfast', description: '', photo_url: null },
-      lunch: { meal_type: 'lunch', description: '', photo_url: null },
-      dinner: { meal_type: 'dinner', description: '', photo_url: null },
-    };
-
-    data?.forEach((row: any) => {
-      const mt = row.meal_type as MealType;
-      if (MEAL_TYPES.includes(mt)) {
-        newEntries[mt] = {
-          id: row.id,
-          meal_type: mt,
-          description: row.description || '',
-          photo_url: row.photo_url,
-        };
-      }
-    });
-
-    setEntries(newEntries);
+    setEntries(buildEntriesFromRows(data ?? []));
   }, [user, dateStr]);
 
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
 
-  const handlePhotoUpload = async (mealType: MealType, file: File) => {
+  const updateLocalItem = (mealType: MealType, tempId: string, updates: Partial<FoodLogItem>) => {
+    setEntries((prev) => ({
+      ...prev,
+      [mealType]: prev[mealType].map((item) =>
+        item.tempId === tempId
+          ? { ...item, ...updates }
+          : item
+      ),
+    }));
+  };
+
+  const saveDish = async (
+    mealType: MealType,
+    tempId: string,
+    options?: {
+      description?: string;
+      photoUrl?: string | null;
+      forceInsert?: boolean;
+    }
+  ) => {
+    if (!user) return null;
+
+    const item = entries[mealType].find((entry) => entry.tempId === tempId);
+    if (!item) return null;
+
+    const description = options?.description ?? item.description;
+    const photoUrl = options?.photoUrl ?? item.photo_url;
+    const payload = {
+      user_id: user.id,
+      log_date: dateStr,
+      meal_type: mealType,
+      description,
+      photo_url: photoUrl,
+      sort_order: item.sort_order,
+    };
+
+    const foodLogsTable = supabase.from('food_logs') as any;
+
+    if (item.id) {
+      const { error } = await foodLogsTable
+        .update({
+          description,
+          photo_url: photoUrl,
+          sort_order: item.sort_order,
+        })
+        .eq('id', item.id);
+
+      if (error) {
+        console.error('Save error:', error);
+      }
+
+      return item.id;
+    }
+
+    if (!options?.forceInsert && !description && !photoUrl) {
+      return null;
+    }
+
+    const { data, error } = await foodLogsTable
+      .insert(payload)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Create error:', error);
+      return null;
+    }
+
+    updateLocalItem(mealType, tempId, {
+      id: data.id,
+      tempId: data.id,
+      description: data.description ?? description,
+      photo_url: data.photo_url ?? photoUrl,
+      sort_order: data.sort_order ?? item.sort_order,
+    });
+
+    return data.id as string;
+  };
+
+  const handleAddDish = (mealType: MealType) => {
+    const nextSortOrder = Math.max(...entries[mealType].map((item) => item.sort_order), -1) + 1;
+    setEntries((prev) => ({
+      ...prev,
+      [mealType]: [...prev[mealType], createEmptyItem(mealType, nextSortOrder)],
+    }));
+  };
+
+  const handleDescriptionChange = (mealType: MealType, tempId: string, value: string) => {
+    updateLocalItem(mealType, tempId, { description: value });
+  };
+
+  const handlePhotoUpload = async (mealType: MealType, tempId: string, file: File) => {
     if (!user) return;
-    setUploading(mealType);
+    setUploading(tempId);
 
     try {
+      let rowId = entries[mealType].find((item) => item.tempId === tempId)?.id;
+      if (!rowId) {
+        rowId = await saveDish(mealType, tempId, { forceInsert: true });
+      }
+
+      if (!rowId) {
+        throw new Error(language === 'zh' ? '无法创建记录' : 'Could not create log entry');
+      }
+
       const ext = file.name.split('.').pop();
-      const filePath = `${user.id}/${dateStr}/${mealType}.${ext}`;
+      const filePath = `${user.id}/${dateStr}/${mealType}/${rowId}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('food-log-photos')
@@ -106,19 +235,11 @@ export default function FoodLog() {
         .from('food-log-photos')
         .getPublicUrl(filePath);
 
-      const photoUrl = urlData.publicUrl + '?t=' + Date.now();
+      const photoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      updateLocalItem(mealType, tempId, { photo_url: photoUrl, id: rowId, tempId: rowId });
+      await saveDish(mealType, rowId, { photoUrl, forceInsert: true });
 
-      setEntries(prev => ({
-        ...prev,
-        [mealType]: { ...prev[mealType], photo_url: photoUrl },
-      }));
-
-      // Auto-save after photo upload
-      await saveEntry(mealType, entries[mealType].description, photoUrl);
-
-      toast({
-        title: language === 'zh' ? '照片已上传' : 'Photo uploaded',
-      });
+      toast({ title: language === 'zh' ? '照片已上传' : 'Photo uploaded' });
     } catch (err: any) {
       console.error('Upload error:', err);
       toast({
@@ -131,49 +252,53 @@ export default function FoodLog() {
     }
   };
 
-  const saveEntry = async (mealType: MealType, description: string, photoUrl: string | null) => {
-    if (!user) return;
-    const entry = entries[mealType];
+  const handleRemovePhoto = async (mealType: MealType, tempId: string) => {
+    const item = entries[mealType].find((entry) => entry.tempId === tempId);
+    if (!item) return;
 
-    const payload = {
-      user_id: user.id,
-      log_date: dateStr,
-      meal_type: mealType,
-      description: description || entry.description,
-      photo_url: photoUrl ?? entry.photo_url,
-    };
-
-    const { error } = await supabase
-      .from('food_logs')
-      .upsert(payload, { onConflict: 'user_id,log_date,meal_type' });
-
-    if (error) {
-      console.error('Save error:', error);
+    updateLocalItem(mealType, tempId, { photo_url: null });
+    if (item.id) {
+      await saveDish(mealType, tempId, { photoUrl: null, forceInsert: true });
     }
   };
 
-  const handleDescriptionChange = (mealType: MealType, value: string) => {
-    setEntries(prev => ({
-      ...prev,
-      [mealType]: { ...prev[mealType], description: value },
-    }));
+  const handleDeleteDish = async (mealType: MealType, tempId: string) => {
+    const item = entries[mealType].find((entry) => entry.tempId === tempId);
+    if (!item) return;
+
+    if (item.id) {
+      await (supabase.from('food_logs') as any).delete().eq('id', item.id);
+    }
+
+    setEntries((prev) => {
+      const nextItems = prev[mealType].filter((entry) => entry.tempId !== tempId);
+      return {
+        ...prev,
+        [mealType]: nextItems.length > 0 ? nextItems : [createEmptyItem(mealType)],
+      };
+    });
+
+    toast({ title: language === 'zh' ? '已删除' : 'Deleted' });
   };
 
   const handleSaveAll = async () => {
     if (!user) return;
     setSaving(true);
+
     try {
       for (const mealType of MEAL_TYPES) {
-        const entry = entries[mealType];
-        if (entry.description || entry.photo_url) {
-          await saveEntry(mealType, entry.description, entry.photo_url);
+        for (const item of entries[mealType]) {
+          if (item.description || item.photo_url) {
+            await saveDish(mealType, item.tempId);
+          }
         }
       }
+
       toast({
         title: language === 'zh' ? '已保存' : 'Saved',
         description: language === 'zh' ? '今日饮食记录已保存' : 'Food log saved successfully',
       });
-    } catch (err: any) {
+    } catch {
       toast({
         title: language === 'zh' ? '保存失败' : 'Save failed',
         variant: 'destructive',
@@ -183,20 +308,9 @@ export default function FoodLog() {
     }
   };
 
-  const handleDeleteEntry = async (mealType: MealType) => {
-    if (!user) return;
-    const entry = entries[mealType];
-    if (entry.id) {
-      await supabase.from('food_logs').delete().eq('id', entry.id);
-    }
-    setEntries(prev => ({
-      ...prev,
-      [mealType]: { meal_type: mealType, description: '', photo_url: null },
-    }));
-    toast({ title: language === 'zh' ? '已删除' : 'Deleted' });
-  };
-
-  const hasAnyContent = MEAL_TYPES.some(mt => entries[mt].description || entries[mt].photo_url);
+  const hasAnyContent = MEAL_TYPES.some((mealType) =>
+    entries[mealType].some((item) => item.description || item.photo_url)
+  );
 
   if (!user) {
     return (
@@ -223,23 +337,21 @@ export default function FoodLog() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1 container py-4 md:py-8 pb-20 md:pb-8">
-        {/* Title */}
         <div className="mb-4 md:mb-6">
           <h1 className="text-lg md:text-2xl font-bold">
             {language === 'zh' ? '饮食记录' : 'Food Log'}
           </h1>
           <p className="text-xs md:text-sm text-muted-foreground">
-            {language === 'zh' ? '记录每天三餐的饮食' : 'Track your daily meals'}
+            {language === 'zh' ? '记录每天三餐的多道菜品与照片' : 'Track multiple dishes and photos for each meal'}
           </p>
         </div>
 
-        {/* Date Navigation */}
         <div className="flex items-center justify-center gap-3 mb-5">
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => setSelectedDate(prev => subDays(prev, 1))}
+            onClick={() => setSelectedDate((prev) => subDays(prev, 1))}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -255,109 +367,118 @@ export default function FoodLog() {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => setSelectedDate(prev => addDays(prev, 1))}
+            onClick={() => setSelectedDate((prev) => addDays(prev, 1))}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Meal Cards */}
         <div className="space-y-3 md:space-y-4 max-w-2xl mx-auto">
-          {MEAL_TYPES.map((mealType) => {
-            const entry = entries[mealType];
-            return (
-              <Card key={mealType} className="overflow-hidden">
-                <CardContent className="p-3 md:p-4">
-                  {/* Meal Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{mealIcons[mealType]}</span>
-                      <h3 className="text-sm md:text-base font-semibold">{mealLabels[mealType]}</h3>
-                    </div>
-                    {(entry.description || entry.photo_url) && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDeleteEntry(mealType)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
+          {MEAL_TYPES.map((mealType) => (
+            <Card key={mealType} className="overflow-hidden">
+              <CardContent className="p-3 md:p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{mealIcons[mealType]}</span>
+                    <h3 className="text-sm md:text-base font-semibold">{mealLabels[mealType]}</h3>
                   </div>
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleAddDish(mealType)}>
+                    <Plus className="h-3.5 w-3.5" />
+                    {language === 'zh' ? '添加菜品' : 'Add dish'}
+                  </Button>
+                </div>
 
-                  {/* Description Input */}
-                  <Input
-                    placeholder={language === 'zh' ? `今天${mealLabels[mealType]}吃了什么？` : `What did you have for ${mealLabels[mealType].toLowerCase()}?`}
-                    value={entry.description}
-                    onChange={(e) => handleDescriptionChange(mealType, e.target.value)}
-                    onBlur={() => {
-                      if (entry.description) saveEntry(mealType, entry.description, entry.photo_url);
-                    }}
-                    className="mb-3 text-sm"
-                  />
-
-                  {/* Photo Section */}
-                  <div className="flex items-start gap-3">
-                    {entry.photo_url ? (
-                      <div className="relative group">
-                        <img
-                          src={entry.photo_url}
-                          alt={mealLabels[mealType]}
-                          className="w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover border border-border"
-                        />
-                        <button
-                          onClick={() => {
-                            setEntries(prev => ({
-                              ...prev,
-                              [mealType]: { ...prev[mealType], photo_url: null },
-                            }));
-                            saveEntry(mealType, entry.description, null);
-                          }}
-                          className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                <div className="space-y-3">
+                  {entries[mealType].map((item, index) => (
+                    <div
+                      key={item.tempId}
+                      className={cn(
+                        'rounded-xl border border-border bg-card/60 p-3',
+                        index > 0 && 'mt-2'
+                      )}
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {language === 'zh' ? `菜品 ${index + 1}` : `Dish ${index + 1}`}
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteDish(mealType, item.tempId)}
                         >
-                          <X className="h-3 w-3" />
-                        </button>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                    ) : null}
 
-                    <label className="cursor-pointer">
-                      <div className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors ${uploading === mealType ? 'opacity-50' : ''}`}>
-                        <Camera className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {uploading === mealType
-                            ? (language === 'zh' ? '上传中...' : 'Uploading...')
-                            : (language === 'zh' ? '添加照片' : 'Add Photo')
+                      <Input
+                        placeholder={language === 'zh' ? '输入菜名' : 'Enter dish name'}
+                        value={item.description}
+                        onChange={(e) => handleDescriptionChange(mealType, item.tempId, e.target.value)}
+                        onBlur={() => {
+                          if (item.description || item.photo_url) {
+                            saveDish(mealType, item.tempId);
                           }
-                        </span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={uploading === mealType}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handlePhotoUpload(mealType, file);
-                          e.target.value = '';
                         }}
+                        className="mb-3 text-sm"
                       />
-                    </label>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+
+                      <div className="flex flex-wrap items-start gap-3">
+                        {item.photo_url ? (
+                          <div className="relative group">
+                            <img
+                              src={item.photo_url}
+                              alt={item.description || mealLabels[mealType]}
+                              className="h-20 w-20 rounded-lg border border-border object-cover md:h-24 md:w-24"
+                            />
+                            <button
+                              onClick={() => handleRemovePhoto(mealType, item.tempId)}
+                              className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : null}
+
+                        <label className="cursor-pointer">
+                          <div className={cn(
+                            'flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 transition-colors hover:border-primary hover:bg-primary/5',
+                            uploading === item.tempId && 'opacity-50'
+                          )}>
+                            <Camera className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {uploading === item.tempId
+                                ? (language === 'zh' ? '上传中...' : 'Uploading...')
+                                : (language === 'zh' ? '添加照片' : 'Add Photo')}
+                            </span>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={uploading === item.tempId}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handlePhotoUpload(mealType, item.tempId, file);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Save Button */}
         {hasAnyContent && (
           <div className="max-w-2xl mx-auto mt-4">
             <Button onClick={handleSaveAll} disabled={saving} className="w-full">
               {saving
                 ? (language === 'zh' ? '保存中...' : 'Saving...')
-                : (language === 'zh' ? '保存记录' : 'Save Log')
-              }
+                : (language === 'zh' ? '保存记录' : 'Save Log')}
             </Button>
           </div>
         )}
