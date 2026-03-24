@@ -52,11 +52,23 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
     }
   };
 
-  const handleQuickLog = async (mealType: 'breakfast' | 'lunch' | 'dinner', e: React.MouseEvent) => {
+  const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | null>(null);
+  const [askingImage, setAskingImage] = useState(false);
+
+  const handleMealTypeSelect = (mealType: 'breakfast' | 'lunch' | 'dinner', e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) return;
+    setSelectedMealType(mealType);
+    setAskingImage(true);
+  };
+
+  const handleQuickLog = async (useRecipeImage: boolean) => {
+    if (!user || !selectedMealType) return;
+    setAskingImage(false);
     setLogOpen(false);
+
+    const mealType = selectedMealType;
+    setSelectedMealType(null);
 
     const dateStr = format(new Date(), 'yyyy-MM-dd');
     const foodLogsTable = supabase.from('food_logs') as any;
@@ -79,6 +91,7 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
       log_date: dateStr,
       meal_type: mealType,
       description: recipe.label,
+      photo_url: useRecipeImage ? recipe.image : null,
       sort_order: nextSortOrder,
     });
 
