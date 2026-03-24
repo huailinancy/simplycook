@@ -95,8 +95,8 @@ function DroppableCategoryButton({
       ref={setNodeRef}
       onClick={onClick}
       className={`
-        cursor-pointer select-none flex flex-col items-center justify-center gap-1.5
-        min-w-[100px] w-[110px] h-[100px] rounded-lg border-2 p-3
+        cursor-pointer select-none flex flex-col items-center justify-center gap-1
+        min-w-[70px] w-[80px] h-[76px] md:min-w-[100px] md:w-[110px] md:h-[100px] rounded-lg border-2 p-2 md:p-3
         transition-all duration-200 text-center
         ${isActive
           ? 'border-primary bg-primary/10 shadow-md'
@@ -104,11 +104,11 @@ function DroppableCategoryButton({
         ${over ? 'ring-2 ring-primary border-primary bg-primary/15 scale-105 shadow-lg' : ''}
       `}
     >
-      <Folder className={`h-8 w-8 ${isActive ? 'text-primary' : 'text-muted-foreground'} ${over ? 'text-primary' : ''}`} />
-      <span className={`text-xs font-medium leading-tight line-clamp-2 ${isActive ? 'text-primary' : 'text-foreground'}`}>
+      <Folder className={`h-6 w-6 md:h-8 md:w-8 ${isActive ? 'text-primary' : 'text-muted-foreground'} ${over ? 'text-primary' : ''}`} />
+      <span className={`text-[10px] md:text-xs font-medium leading-tight line-clamp-2 ${isActive ? 'text-primary' : 'text-foreground'}`}>
         {label}
       </span>
-      <span className="text-[10px] text-muted-foreground">({count})</span>
+      <span className="text-[9px] md:text-[10px] text-muted-foreground">({count})</span>
     </div>
   );
 }
@@ -528,17 +528,17 @@ export default function MyRecipes() {
   return (
     <Layout>
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="container py-8">
+        <div className="container py-4 md:py-8">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <Import className="h-8 w-8 text-primary" />
-                <h1 className="font-display text-3xl md:text-4xl font-bold">
+              <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+                <Import className="h-5 w-5 md:h-8 md:w-8 text-primary" />
+                <h1 className="font-display text-xl md:text-4xl font-bold">
                   {t('myRecipes.title')}
                 </h1>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-xs md:text-base text-muted-foreground">
                 {t('myRecipes.subtitle')}
               </p>
             </div>
@@ -663,24 +663,24 @@ export default function MyRecipes() {
               </div>
             )}
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 md:gap-3">
               {/* All filter */}
               <div
                 onClick={() => setActiveCategoryFilter(null)}
                 className={`
-                  cursor-pointer select-none flex flex-col items-center justify-center gap-1.5
-                  min-w-[100px] w-[110px] h-[100px] rounded-lg border-2 p-3
+                  cursor-pointer select-none flex flex-col items-center justify-center gap-1
+                  min-w-[70px] w-[80px] h-[76px] md:min-w-[100px] md:w-[110px] md:h-[100px] rounded-lg border-2 p-2 md:p-3
                   transition-all duration-200 text-center
                   ${activeCategoryFilter === null
                     ? 'border-primary bg-primary/10 shadow-md'
                     : 'border-border bg-card hover:border-primary/40 hover:bg-muted/60'}
                 `}
               >
-                <Folder className={`h-8 w-8 ${activeCategoryFilter === null ? 'text-primary' : 'text-muted-foreground'}`} />
-                <span className={`text-xs font-medium ${activeCategoryFilter === null ? 'text-primary' : 'text-foreground'}`}>
+                <Folder className={`h-6 w-6 md:h-8 md:w-8 ${activeCategoryFilter === null ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={`text-[10px] md:text-xs font-medium ${activeCategoryFilter === null ? 'text-primary' : 'text-foreground'}`}>
                   {language === 'zh' ? '全部' : 'All'}
                 </span>
-                <span className="text-[10px] text-muted-foreground">({recipes.length})</span>
+                <span className="text-[9px] md:text-[10px] text-muted-foreground">({recipes.length})</span>
               </div>
 
               {/* Category filters - droppable */}

@@ -130,34 +130,34 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
         )}
       </div>
 
-      <div className="p-4">
-        <h3 className="font-display text-lg font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors capitalize">
+      <div className="p-3 md:p-4">
+        <h3 className="font-display text-sm md:text-lg font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors capitalize">
           {recipe.label}
         </h3>
-        <p className="text-sm text-muted-foreground mt-1 mb-3">
+        <p className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1 mb-2 md:mb-3">
           by {recipe.source}
         </p>
 
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
             <span>{prepTime} min</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Flame className="h-4 w-4 text-spice" />
+          <div className="flex items-center gap-1">
+            <Flame className="h-3 w-3 md:h-4 md:w-4 text-spice" />
             <span>{calories} {language === 'zh' ? '卡' : 'cal'}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Users className="h-4 w-4 text-herb" />
+          <div className="flex items-center gap-1">
+            <Users className="h-3 w-3 md:h-4 md:w-4 text-herb" />
             <span>{recipe.yield} {language === 'zh' ? '份' : 'servings'}</span>
           </div>
         </div>
 
         {/* Diet labels */}
         {recipe.dietLabels.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          <div className="flex flex-wrap gap-1 md:gap-1.5 mt-2 md:mt-3">
             {recipe.dietLabels.slice(0, 2).map((label) => (
-              <Badge key={label} variant="outline" className="text-xs bg-herb-light text-herb border-herb/30">
+              <Badge key={label} variant="outline" className="text-[10px] md:text-xs bg-herb-light text-herb border-herb/30">
                 {translateTag(label, language)}
               </Badge>
             ))}

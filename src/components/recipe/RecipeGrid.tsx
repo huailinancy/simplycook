@@ -15,7 +15,7 @@ interface RecipeGridProps {
 export function RecipeGrid({ recipes, isLoading, onAddToMealPlan, mealPlanRecipeIds = [], selectable, selectedIds, onSelect }: RecipeGridProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
             <RecipeCardSkeleton />
@@ -34,7 +34,7 @@ export function RecipeGrid({ recipes, isLoading, onAddToMealPlan, mealPlanRecipe
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
       {recipes.map((recipe, i) => (
         <div key={recipe.uri} className="animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
           <RecipeCard

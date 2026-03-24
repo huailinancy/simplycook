@@ -182,22 +182,22 @@ export default function SavedRecipes() {
 
   return (
     <Layout>
-      <div className="container py-8">
+      <div className="container py-4 md:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
+        <div className="mb-4 md:mb-8">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <Bookmark className="h-8 w-8 text-primary" />
-                <h1 className="font-display text-3xl md:text-4xl font-bold">
+              <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+                <Bookmark className="h-5 w-5 md:h-8 md:w-8 text-primary" />
+                <h1 className="font-display text-xl md:text-4xl font-bold">
                   {t('saved.title')}
                 </h1>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-xs md:text-base text-muted-foreground">
                 {t('saved.subtitle')}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 md:gap-2">
               {recipes.length > 0 && !selectMode && (
                 <Button
                   variant="outline"
@@ -215,18 +215,18 @@ export default function SavedRecipes() {
 
         {/* Selection action bar */}
         {selectMode && (
-          <div className="mb-4 flex items-center justify-between bg-muted/50 rounded-lg px-4 py-3 border border-border">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={handleCancelSelect}>
-                <X className="h-4 w-4 mr-1" />
+          <div className="mb-3 md:mb-4 flex flex-wrap items-center justify-between gap-2 bg-muted/50 rounded-lg px-3 md:px-4 py-2 md:py-3 border border-border">
+            <div className="flex items-center gap-2 md:gap-3">
+              <Button variant="ghost" size="sm" className="h-7 md:h-8 text-xs md:text-sm" onClick={handleCancelSelect}>
+                <X className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1" />
                 {language === 'zh' ? '取消' : 'Cancel'}
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleSelectAll}>
+              <Button variant="ghost" size="sm" className="h-7 md:h-8 text-xs md:text-sm" onClick={handleSelectAll}>
                 {selectedIds.size === recipes.length
                   ? (language === 'zh' ? '取消全选' : 'Deselect All')
                   : (language === 'zh' ? '全选' : 'Select All')}
               </Button>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs md:text-sm text-muted-foreground">
                 {language === 'zh'
                   ? `已选 ${selectedIds.size} 个`
                   : `${selectedIds.size} selected`}
