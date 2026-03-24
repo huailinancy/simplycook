@@ -144,28 +144,38 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
 
         {/* Quick log to food diary */}
         {showQuickLog && user && (
-          <Popover open={logOpen} onOpenChange={setLogOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                size="icon"
-                variant="default"
-                className={cn(
-                  "absolute top-3 h-8 w-8 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100",
-                  user && onAddToMealPlan ? "right-[6.5rem] md:right-[6.5rem]" : user ? "right-14" : "right-3"
-                )}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              >
-                <UtensilsCrossed className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-1" align="end" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-              <div className="flex flex-col gap-0.5">
-                {([['breakfast', '🌅', '早餐'], ['lunch', '☀️', '午餐'], ['dinner', '🌙', '晚餐']] as const).map(([type, icon, zhLabel]) => (
+          <Dialog open={logOpen} onOpenChange={setLogOpen}>
+            <Button
+              size="icon"
+              variant="default"
+              className={cn(
+                "absolute top-3 h-8 w-8 transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100",
+                user && onAddToMealPlan ? "right-[6.5rem]" : user ? "right-14" : "right-3"
+              )}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setLogOpen(true);
+              }}
+            >
+              <UtensilsCrossed className="h-4 w-4" />
+            </Button>
+            <DialogContent className="max-w-[280px] rounded-2xl p-4" onClick={(e) => e.stopPropagation()}>
+              <DialogHeader>
+                <DialogTitle className="text-center text-base">
+                  {language === 'zh' ? '快速记录到今天' : 'Quick log for today'}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="mt-2 flex flex-col gap-2">
+                {([
+                  ['breakfast', '🌅', '早餐'],
+                  ['lunch', '☀️', '午餐'],
+                  ['dinner', '🌙', '晚餐'],
+                ] as const).map(([type, icon, zhLabel]) => (
                   <Button
                     key={type}
-                    variant="ghost"
-                    size="sm"
-                    className="justify-start gap-2 text-xs"
+                    variant="outline"
+                    className="justify-start gap-2"
                     onClick={(e) => handleQuickLog(type, e)}
                   >
                     <span>{icon}</span>
@@ -173,8 +183,8 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
                   </Button>
                 ))}
               </div>
-            </PopoverContent>
-          </Popover>
+            </DialogContent>
+          </Dialog>
         )}
 
         {recipe.cuisineType?.[0] && (
