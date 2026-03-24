@@ -52,6 +52,30 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
     }
   };
 
+  const handleQuickLog = async (mealType: 'breakfast' | 'lunch' | 'dinner', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) return;
+    setLogOpen(false);
+
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    const { error } = await supabase
+      .from('food_logs')
+      .upsert({
+        user_id: user.id,
+        log_date: dateStr,
+        meal_type: mealType,
+        description: recipe.label,
+      }, { onConflict: 'user_id,log_date,meal_type' });
+
+    const mealLabels = { breakfast: language === 'zh' ? '早餐' : 'Breakfast', lunch: language === 'zh' ? '午餐' : 'Lunch', dinner: language === 'zh' ? '晚餐' : 'Dinner' };
+    if (error) {
+      toast({ title: language === 'zh' ? '记录失败' : 'Failed to log', variant: 'destructive' });
+    } else {
+      toast({ title: language === 'zh' ? `已记录到今日${mealLabels[mealType]}` : `Logged to today's ${mealLabels[mealType]}` });
+    }
+  };
+
   const Wrapper = selectable ? 'div' : Link;
   const wrapperProps = selectable ? { onClick: handleCardClick } : { to: `/recipe/${recipe.uri}` };
 
