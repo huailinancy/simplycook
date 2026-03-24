@@ -25,12 +25,14 @@ interface RecipeCardProps {
   showQuickLog?: boolean;
 }
 
-export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, saveCount, selectable, isSelected, onSelect }: RecipeCardProps) {
+export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, saveCount, selectable, isSelected, onSelect, showQuickLog }: RecipeCardProps) {
   const calories = Math.round(recipe.calories / recipe.yield);
   const prepTime = recipe.totalTime || 30;
   const { user } = useAuth();
   const { isRecipeSaved, toggleSave } = useSavedRecipesContext();
   const { language } = useLanguage();
+  const { toast } = useToast();
+  const [logOpen, setLogOpen] = useState(false);
 
   const recipeId = parseInt(recipe.uri);
   const isSaved = isRecipeSaved(recipeId);
