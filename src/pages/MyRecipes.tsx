@@ -528,7 +528,7 @@ export default function MyRecipes() {
   return (
     <Layout>
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="container py-8">
+        <div className="container py-4 md:py-8">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6">
             <div>
