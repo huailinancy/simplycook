@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChefHat, Search, Calendar, ShoppingCart, UtensilsCrossed, LogOut, Bookmark, Import, Globe, Menu, NotebookPen } from 'lucide-react';
+import { ChefHat, Search, Calendar, ShoppingCart, UtensilsCrossed, LogOut, Bookmark, Import, Globe, Menu, NotebookPen, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -122,6 +122,18 @@ export function Header() {
                         <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                       </div>
                     </div>
+                    <SheetClose asChild>
+                      <Link to="/change-password">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start gap-2"
+                        >
+                          <KeyRound className="h-4 w-4" />
+                          {language === 'zh' ? '修改密码' : 'Change Password'}
+                        </Button>
+                      </Link>
+                    </SheetClose>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -246,6 +258,12 @@ export function Header() {
                   <Link to="/my-recipes" className="cursor-pointer">
                     <Import className="h-4 w-4 mr-2" />
                     {t('nav.imported')}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/change-password" className="cursor-pointer">
+                    <KeyRound className="h-4 w-4 mr-2" />
+                    {language === 'zh' ? '修改密码' : 'Change Password'}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

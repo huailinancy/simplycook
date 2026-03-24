@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -28,12 +28,10 @@ export default function ResetPassword() {
       setError(language === 'zh' ? '请填写所有字段' : 'Please fill in all fields');
       return;
     }
-
     if (password.length < 6) {
       setError(language === 'zh' ? '密码至少需要6个字符' : 'Password must be at least 6 characters');
       return;
     }
-
     if (password !== confirmPassword) {
       setError(language === 'zh' ? '两次输入的密码不一致' : 'Passwords do not match');
       return;
@@ -62,9 +60,6 @@ export default function ResetPassword() {
             <CardTitle className="text-2xl font-display">
               {language === 'zh' ? '密码已更新' : 'Password Updated'}
             </CardTitle>
-            <CardDescription className="text-base">
-              {language === 'zh' ? '您的密码已成功修改' : 'Your password has been successfully changed'}
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button className="w-full" onClick={() => navigate('/')}>
@@ -80,16 +75,11 @@ export default function ResetPassword() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Lock className="h-6 w-6" />
-            </div>
-          </div>
           <CardTitle className="text-2xl font-display">
             {language === 'zh' ? '设置新密码' : 'Set New Password'}
           </CardTitle>
           <CardDescription>
-            {language === 'zh' ? '请输入您的新密码' : 'Enter your new password below'}
+            {language === 'zh' ? '请输入您的新密码' : 'Enter your new password'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -100,60 +90,24 @@ export default function ResetPassword() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-
             <div className="space-y-2">
-              <Label htmlFor="new-password">
-                {language === 'zh' ? '新密码' : 'New Password'}
-              </Label>
+              <Label>{language === 'zh' ? '新密码' : 'New Password'}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="new-password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  disabled={isSubmitting}
-                />
+                <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" disabled={isSubmitting} />
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">
-                {language === 'zh' ? '确认密码' : 'Confirm Password'}
-              </Label>
+              <Label>{language === 'zh' ? '确认密码' : 'Confirm Password'}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10"
-                  disabled={isSubmitting}
-                />
+                <Input type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="pl-10" disabled={isSubmitting} />
               </div>
             </div>
-
             <Button type="submit" className="w-full btn-primary-gradient border-0" disabled={isSubmitting}>
-              {isSubmitting
-                ? (language === 'zh' ? '请稍候...' : 'Please wait...')
-                : (language === 'zh' ? '更新密码' : 'Update Password')
-              }
+              {isSubmitting ? (language === 'zh' ? '请稍候...' : 'Please wait...') : (language === 'zh' ? '更新密码' : 'Update Password')}
             </Button>
           </form>
-
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => navigate('/auth')}
-              className="text-sm text-primary hover:underline"
-            >
-              {language === 'zh' ? '返回登录' : 'Back to Sign In'}
-            </button>
-          </div>
         </CardContent>
       </Card>
     </div>
