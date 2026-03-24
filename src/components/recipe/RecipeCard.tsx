@@ -1,12 +1,17 @@
-import { Clock, Users, Flame, Plus, Check, Bookmark, Heart, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { Clock, Users, Flame, Plus, Check, Bookmark, Heart, CheckCircle2, UtensilsCrossed } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Recipe } from '@/types/recipe';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSavedRecipesContext } from '@/contexts/SavedRecipesContext';
 import { useLanguage, translateTag } from '@/contexts/LanguageContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface RecipeCardProps {
   recipe: Recipe;
