@@ -4,8 +4,12 @@ import { SearchFilters, Recipe } from '@/types/recipe';
 import { useRecipeSearch, SortOption } from '@/hooks/useRecipeSearch';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
+import { translateFilterValue, getTimeRangeLabel } from '@/contexts/LanguageContext';
+import { TIME_RANGES } from '@/types/recipe';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -13,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpDown, Globe, Search } from 'lucide-react';
+import { ArrowUpDown, Globe, Search, X } from 'lucide-react';
 
 export default function Recipes() {
   const [filters, setFilters] = useState<SearchFilters>({ query: '' });
