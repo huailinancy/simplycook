@@ -8,12 +8,6 @@ interface LanguageContextType {
   t: (key: string) => string;
 }
 
-const getInitialLanguage = (): Language => {
-  const stored = localStorage.getItem('preferred-language');
-  if (stored === 'en' || stored === 'zh') return stored;
-  return 'zh';
-};
-
 const translations: Record<Language, Record<string, string>> = {
   en: {
     // Navigation
