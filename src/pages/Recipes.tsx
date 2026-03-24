@@ -51,7 +51,7 @@ export default function Recipes() {
     communitySearch.searchRecipes(newFilters);
   };
 
-  const activeFiltersCount = [filters.cuisineType, filters.mealType, filters.time].filter(Boolean).length;
+  const activeFiltersCount = [filters.cuisineType, filters.time].filter(Boolean).length;
 
   const handleLoadMore = () => {
     communitySearch.loadMore(filters);
