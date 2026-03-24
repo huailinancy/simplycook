@@ -22,7 +22,7 @@ export default function Recipes() {
   const [filters, setFilters] = useState<SearchFilters>({ query: '' });
   const { toast } = useToast();
   const { t, language } = useLanguage();
-  const { cuisines, mealTypes } = useFilterOptions();
+  
 
   const communitySearch = useRecipeSearch({ source: 'community' });
 
