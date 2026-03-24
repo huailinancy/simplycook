@@ -174,6 +174,7 @@ function RecipeGridWithSaveCount({ recipes, isLoading, onAddToMealPlan, getSaveC
             recipe={recipe}
             onAddToMealPlan={onAddToMealPlan}
             saveCount={getSaveCount(recipe.uri)}
+            showQuickLog
           />
         </div>
       ))}

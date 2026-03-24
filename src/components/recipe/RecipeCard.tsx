@@ -1,12 +1,17 @@
-import { Clock, Users, Flame, Plus, Check, Bookmark, Heart, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { Clock, Users, Flame, Plus, Check, Bookmark, Heart, CheckCircle2, UtensilsCrossed } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Recipe } from '@/types/recipe';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSavedRecipesContext } from '@/contexts/SavedRecipesContext';
 import { useLanguage, translateTag } from '@/contexts/LanguageContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -17,14 +22,17 @@ interface RecipeCardProps {
   selectable?: boolean;
   isSelected?: boolean;
   onSelect?: (recipeId: string) => void;
+  showQuickLog?: boolean;
 }
 
-export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, saveCount, selectable, isSelected, onSelect }: RecipeCardProps) {
+export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, saveCount, selectable, isSelected, onSelect, showQuickLog }: RecipeCardProps) {
   const calories = Math.round(recipe.calories / recipe.yield);
   const prepTime = recipe.totalTime || 30;
   const { user } = useAuth();
   const { isRecipeSaved, toggleSave } = useSavedRecipesContext();
   const { language } = useLanguage();
+  const { toast } = useToast();
+  const [logOpen, setLogOpen] = useState(false);
 
   const recipeId = parseInt(recipe.uri);
   const isSaved = isRecipeSaved(recipeId);
@@ -41,6 +49,30 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
       e.preventDefault();
       e.stopPropagation();
       onSelect(recipe.uri);
+    }
+  };
+
+  const handleQuickLog = async (mealType: 'breakfast' | 'lunch' | 'dinner', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) return;
+    setLogOpen(false);
+
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    const { error } = await supabase
+      .from('food_logs')
+      .upsert({
+        user_id: user.id,
+        log_date: dateStr,
+        meal_type: mealType,
+        description: recipe.label,
+      }, { onConflict: 'user_id,log_date,meal_type' });
+
+    const mealLabels = { breakfast: language === 'zh' ? '早餐' : 'Breakfast', lunch: language === 'zh' ? '午餐' : 'Lunch', dinner: language === 'zh' ? '晚餐' : 'Dinner' };
+    if (error) {
+      toast({ title: language === 'zh' ? '记录失败' : 'Failed to log', variant: 'destructive' });
+    } else {
+      toast({ title: language === 'zh' ? `已记录到今日${mealLabels[mealType]}` : `Logged to today's ${mealLabels[mealType]}` });
     }
   };
 
@@ -110,7 +142,41 @@ export function RecipeCard({ recipe, onAddToMealPlan, isInMealPlan, className, s
           </Button>
         )}
 
-        {/* Cuisine type */}
+        {/* Quick log to food diary */}
+        {showQuickLog && user && (
+          <Popover open={logOpen} onOpenChange={setLogOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                size="icon"
+                variant="default"
+                className={cn(
+                  "absolute top-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-all",
+                  user && onAddToMealPlan ? "right-[6.5rem]" : user ? "right-14" : "right-3"
+                )}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              >
+                <UtensilsCrossed className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-1" align="end" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+              <div className="flex flex-col gap-0.5">
+                {([['breakfast', '🌅', '早餐'], ['lunch', '☀️', '午餐'], ['dinner', '🌙', '晚餐']] as const).map(([type, icon, zhLabel]) => (
+                  <Button
+                    key={type}
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start gap-2 text-xs"
+                    onClick={(e) => handleQuickLog(type, e)}
+                  >
+                    <span>{icon}</span>
+                    <span>{language === 'zh' ? zhLabel : type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
         {recipe.cuisineType?.[0] && (
           <div className="absolute bottom-3 left-3">
             <Badge className="bg-primary/90 text-primary-foreground backdrop-blur-sm">
