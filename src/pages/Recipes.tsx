@@ -125,14 +125,8 @@ export default function Recipes() {
           <div className="flex flex-wrap gap-2 mb-4">
             {filters.cuisineType && (
               <Badge variant="secondary" className="gap-1 text-xs">
-                {translateFilterValue(filters.cuisineType, language, 'cuisine')}
+                {filters.cuisineType}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange('cuisineType', '')} />
-              </Badge>
-            )}
-            {filters.mealType && (
-              <Badge variant="secondary" className="gap-1 text-xs">
-                {translateFilterValue(filters.mealType, language, 'mealType')}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange('mealType', '')} />
               </Badge>
             )}
             {filters.time && (
