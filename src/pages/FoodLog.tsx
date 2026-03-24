@@ -688,6 +688,10 @@ export default function FoodLog() {
             </Button>
           </div>
         )}
+
+        {/* Past 30 Days Review */}
+        <Past30DaysReview user={user} language={language} />
+
       </main>
       <MobileBottomNav />
     </div>
