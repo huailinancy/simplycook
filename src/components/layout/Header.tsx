@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChefHat, Search, Calendar, ShoppingCart, UtensilsCrossed, LogOut, Bookmark, Import, Globe, Menu, NotebookPen } from 'lucide-react';
+import { ChefHat, Search, Calendar, ShoppingCart, UtensilsCrossed, LogOut, Bookmark, Import, Globe, Menu, NotebookPen, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
