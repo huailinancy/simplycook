@@ -530,15 +530,15 @@ export default function MyRecipes() {
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="container py-8">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <Import className="h-8 w-8 text-primary" />
-                <h1 className="font-display text-3xl md:text-4xl font-bold">
+              <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+                <Import className="h-5 w-5 md:h-8 md:w-8 text-primary" />
+                <h1 className="font-display text-xl md:text-4xl font-bold">
                   {t('myRecipes.title')}
                 </h1>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-xs md:text-base text-muted-foreground">
                 {t('myRecipes.subtitle')}
               </p>
             </div>
