@@ -23,6 +23,7 @@ export default function Recipes() {
   const [filters, setFilters] = useState<SearchFilters>({ query: '' });
   const { toast } = useToast();
   const { t, language } = useLanguage();
+  const { cuisines, mealTypes } = useFilterOptions();
 
   const communitySearch = useRecipeSearch({ source: 'community' });
 
@@ -38,6 +39,20 @@ export default function Recipes() {
   const handleSearch = () => {
     communitySearch.searchRecipes(filters);
   };
+
+  const handleFilterChange = (key: keyof SearchFilters, value: string) => {
+    const newFilters = { ...filters, [key]: value || undefined };
+    setFilters(newFilters);
+    communitySearch.searchRecipes(newFilters);
+  };
+
+  const clearFilters = () => {
+    const newFilters = { query: filters.query };
+    setFilters(newFilters);
+    communitySearch.searchRecipes(newFilters);
+  };
+
+  const activeFiltersCount = [filters.cuisineType, filters.mealType, filters.time].filter(Boolean).length;
 
   const handleLoadMore = () => {
     communitySearch.loadMore(filters);
