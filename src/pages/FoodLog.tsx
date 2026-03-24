@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { format, addDays, subDays, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns';
+import { format, addDays, subDays, subMonths as dateFnsSubMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isSameMonth, addMonths, subMonths, subDays as dateFnsSubDays } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Camera, Plus, X, UtensilsCrossed, Trash2, ChevronDown, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
