@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { format, addDays, subDays, subMonths as dateFnsSubMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isSameMonth, addMonths, subMonths, subDays as dateFnsSubDays } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Camera, Plus, X, UtensilsCrossed, Trash2, ChevronDown, CalendarDays } from 'lucide-react';
@@ -287,6 +287,9 @@ export default function FoodLog() {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [entries, setEntries] = useState<Record<MealType, FoodLogItem[]>>(buildEmptyEntries);
+  const entriesRef = useRef(entries);
+  useEffect(() => { entriesRef.current = entries; }, [entries]);
+  const saveLocksRef = useRef<Map<string, Promise<string | null>>>(new Map());
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -400,64 +403,74 @@ export default function FoodLog() {
       photoUrl?: string | null;
       forceInsert?: boolean;
     }
-  ) => {
+  ): Promise<string | null> => {
     if (!user) return null;
 
-    const item = entries[mealType].find((entry) => entry.tempId === tempId);
-    if (!item) return null;
+    // Serialize all saves for the same dish so a concurrent call awaits
+    // the in-flight insert and then performs an UPDATE instead of a 2nd INSERT.
+    const prev = saveLocksRef.current.get(tempId);
+    const task = (async (): Promise<string | null> => {
+      if (prev) { try { await prev; } catch { /* ignore */ } }
 
-    const description = options?.description ?? item.description;
-    const photoUrl = options?.photoUrl ?? item.photo_url;
-    const payload = {
-      user_id: user.id,
-      log_date: dateStr,
-      meal_type: mealType,
-      description,
-      photo_url: photoUrl,
-      sort_order: item.sort_order,
-    };
+      // Always read latest entries from ref to pick up id set by prior insert.
+      const item = entriesRef.current[mealType].find((entry) => entry.tempId === tempId);
+      if (!item) return null;
 
-    const foodLogsTable = supabase.from('food_logs') as any;
+      const description = options?.description ?? item.description;
+      const photoUrl = options?.photoUrl ?? item.photo_url;
+      const foodLogsTable = supabase.from('food_logs') as any;
 
-    if (item.id) {
-      const { error } = await foodLogsTable
-        .update({
+      if (item.id) {
+        const { error } = await foodLogsTable
+          .update({
+            description,
+            photo_url: photoUrl,
+            sort_order: item.sort_order,
+          })
+          .eq('id', item.id);
+        if (error) console.error('Save error:', error);
+        return item.id;
+      }
+
+      if (!options?.forceInsert && !description && !photoUrl) {
+        return null;
+      }
+
+      const { data, error } = await foodLogsTable
+        .insert({
+          user_id: user.id,
+          log_date: dateStr,
+          meal_type: mealType,
           description,
           photo_url: photoUrl,
           sort_order: item.sort_order,
         })
-        .eq('id', item.id);
+        .select('*')
+        .single();
 
       if (error) {
-        console.error('Save error:', error);
+        console.error('Create error:', error);
+        return null;
       }
 
-      return item.id;
+      updateLocalItem(mealType, tempId, {
+        id: data.id,
+        description: data.description ?? description,
+        photo_url: data.photo_url ?? photoUrl,
+        sort_order: data.sort_order ?? item.sort_order,
+      });
+
+      return data.id as string;
+    })();
+
+    saveLocksRef.current.set(tempId, task);
+    try {
+      return await task;
+    } finally {
+      if (saveLocksRef.current.get(tempId) === task) {
+        saveLocksRef.current.delete(tempId);
+      }
     }
-
-    if (!options?.forceInsert && !description && !photoUrl) {
-      return null;
-    }
-
-    const { data, error } = await foodLogsTable
-      .insert(payload)
-      .select('*')
-      .single();
-
-    if (error) {
-      console.error('Create error:', error);
-      return null;
-    }
-
-    updateLocalItem(mealType, tempId, {
-      id: data.id,
-      tempId: data.id,
-      description: data.description ?? description,
-      photo_url: data.photo_url ?? photoUrl,
-      sort_order: data.sort_order ?? item.sort_order,
-    });
-
-    return data.id as string;
   };
 
   const handleAddDish = (mealType: MealType) => {
@@ -479,7 +492,7 @@ export default function FoodLog() {
     setUploading(tempId);
 
     try {
-      let rowId = entries[mealType].find((item) => item.tempId === tempId)?.id;
+      let rowId = entriesRef.current[mealType].find((item) => item.tempId === tempId)?.id;
       if (!rowId) {
         rowId = await saveDish(mealType, tempId, { forceInsert: true });
       }
@@ -502,8 +515,8 @@ export default function FoodLog() {
         .getPublicUrl(filePath);
 
       const photoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-      updateLocalItem(mealType, tempId, { photo_url: photoUrl, id: rowId, tempId: rowId });
-      await saveDish(mealType, rowId, { photoUrl, forceInsert: true });
+      updateLocalItem(mealType, tempId, { photo_url: photoUrl, id: rowId });
+      await saveDish(mealType, tempId, { photoUrl, forceInsert: true });
 
       toast({ title: language === 'zh' ? '照片已上传' : 'Photo uploaded' });
     } catch (err: any) {
