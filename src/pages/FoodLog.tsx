@@ -166,20 +166,17 @@ function MonthCalendarView({
   );
 }
 
-function Past30DaysReview({ user, language }: { user: { id: string }; language: string }) {
+function AllRecordsReview({ user, language }: { user: { id: string }; language: string }) {
   const [data, setData] = useState<Record<string, { lunch: string[]; dinner: string[] }>>({});
   const [expanded, setExpanded] = useState(false);
+  const [search, setSearch] = useState('');
 
   const fetchData = useCallback(async () => {
     if (!user || !expanded) return;
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const thirtyAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
     const foodLogsTable = supabase.from('food_logs') as any;
     const { data: rows, error } = await foodLogsTable
       .select('log_date, meal_type, description')
       .eq('user_id', user.id)
-      .gte('log_date', thirtyAgo)
-      .lte('log_date', today)
       .in('meal_type', ['lunch', 'dinner'])
       .not('description', 'is', null)
       .order('log_date', { ascending: false })
@@ -199,10 +196,20 @@ function Past30DaysReview({ user, language }: { user: { id: string }; language: 
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Build sorted date list for past 30 days
-  const dates = expanded
-    ? Array.from({ length: 31 }, (_, i) => format(subDays(new Date(), i), 'yyyy-MM-dd'))
-    : [];
+  const query = search.trim().toLowerCase();
+  const sortedDates = Object.keys(data).sort((a, b) => (a < b ? 1 : -1));
+  const filteredDates = sortedDates.filter((dateStr) => {
+    const entry = data[dateStr];
+    const lunchText = entry?.lunch?.join('；') || '';
+    const dinnerText = entry?.dinner?.join('；') || '';
+    if (!lunchText && !dinnerText) return false;
+    if (!query) return true;
+    return (
+      lunchText.toLowerCase().includes(query) ||
+      dinnerText.toLowerCase().includes(query) ||
+      dateStr.includes(query)
+    );
+  });
 
   return (
     <div className="max-w-2xl mx-auto mt-6">
@@ -213,7 +220,7 @@ function Past30DaysReview({ user, language }: { user: { id: string }; language: 
             onClick={() => setExpanded((v) => !v)}
           >
             <h3 className="text-sm md:text-base font-semibold">
-              {language === 'zh' ? '📋 过去30天记录' : '📋 Past 30 Days'}
+              {language === 'zh' ? '📋 全部记录' : '📋 All Records'}
             </h3>
             <ChevronDown className={cn(
               "h-4 w-4 text-muted-foreground transition-transform",
@@ -222,34 +229,51 @@ function Past30DaysReview({ user, language }: { user: { id: string }; language: 
           </button>
 
           {expanded && (
-            <div className="mt-3 overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs whitespace-nowrap w-[80px]">{language === 'zh' ? '日期' : 'Date'}</TableHead>
-                    <TableHead className="text-xs whitespace-nowrap">{language === 'zh' ? '午餐' : 'Lunch'}</TableHead>
-                    <TableHead className="text-xs whitespace-nowrap">{language === 'zh' ? '晚餐' : 'Dinner'}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dates.map((dateStr) => {
-                    const entry = data[dateStr];
-                    const lunchText = entry?.lunch?.join('；') || '';
-                    const dinnerText = entry?.dinner?.join('；') || '';
-                    if (!lunchText && !dinnerText) return null;
-                    return (
-                      <TableRow key={dateStr}>
-                        <TableCell className="text-xs whitespace-nowrap py-2">
-                          {format(new Date(dateStr + 'T00:00:00'), language === 'zh' ? 'M月d日' : 'MMM d')}
+            <>
+              <div className="mt-3">
+                <Input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={language === 'zh' ? '搜索菜品或日期...' : 'Search dishes or date...'}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="mt-3 overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs whitespace-nowrap w-[80px]">{language === 'zh' ? '日期' : 'Date'}</TableHead>
+                      <TableHead className="text-xs whitespace-nowrap">{language === 'zh' ? '午餐' : 'Lunch'}</TableHead>
+                      <TableHead className="text-xs whitespace-nowrap">{language === 'zh' ? '晚餐' : 'Dinner'}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredDates.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-xs text-center text-muted-foreground py-4">
+                          {language === 'zh' ? '暂无记录' : 'No records'}
                         </TableCell>
-                        <TableCell className="text-xs py-2">{lunchText}</TableCell>
-                        <TableCell className="text-xs py-2">{dinnerText}</TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                    )}
+                    {filteredDates.map((dateStr) => {
+                      const entry = data[dateStr];
+                      const lunchText = entry?.lunch?.join('；') || '';
+                      const dinnerText = entry?.dinner?.join('；') || '';
+                      return (
+                        <TableRow key={dateStr}>
+                          <TableCell className="text-xs whitespace-nowrap py-2">
+                            {format(new Date(dateStr + 'T00:00:00'), language === 'zh' ? 'yyyy年M月d日' : 'MMM d, yyyy')}
+                          </TableCell>
+                          <TableCell className="text-xs py-2">{lunchText}</TableCell>
+                          <TableCell className="text-xs py-2">{dinnerText}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -788,7 +812,7 @@ export default function FoodLog() {
         )}
 
         {/* Past 30 Days Review */}
-        <Past30DaysReview user={user} language={language} />
+        <AllRecordsReview user={user} language={language} />
 
       </main>
       <MobileBottomNav />
