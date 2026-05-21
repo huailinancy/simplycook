@@ -403,64 +403,74 @@ export default function FoodLog() {
       photoUrl?: string | null;
       forceInsert?: boolean;
     }
-  ) => {
+  ): Promise<string | null> => {
     if (!user) return null;
 
-    const item = entries[mealType].find((entry) => entry.tempId === tempId);
-    if (!item) return null;
+    // Serialize all saves for the same dish so a concurrent call awaits
+    // the in-flight insert and then performs an UPDATE instead of a 2nd INSERT.
+    const prev = saveLocksRef.current.get(tempId);
+    const task = (async (): Promise<string | null> => {
+      if (prev) { try { await prev; } catch { /* ignore */ } }
 
-    const description = options?.description ?? item.description;
-    const photoUrl = options?.photoUrl ?? item.photo_url;
-    const payload = {
-      user_id: user.id,
-      log_date: dateStr,
-      meal_type: mealType,
-      description,
-      photo_url: photoUrl,
-      sort_order: item.sort_order,
-    };
+      // Always read latest entries from ref to pick up id set by prior insert.
+      const item = entriesRef.current[mealType].find((entry) => entry.tempId === tempId);
+      if (!item) return null;
 
-    const foodLogsTable = supabase.from('food_logs') as any;
+      const description = options?.description ?? item.description;
+      const photoUrl = options?.photoUrl ?? item.photo_url;
+      const foodLogsTable = supabase.from('food_logs') as any;
 
-    if (item.id) {
-      const { error } = await foodLogsTable
-        .update({
+      if (item.id) {
+        const { error } = await foodLogsTable
+          .update({
+            description,
+            photo_url: photoUrl,
+            sort_order: item.sort_order,
+          })
+          .eq('id', item.id);
+        if (error) console.error('Save error:', error);
+        return item.id;
+      }
+
+      if (!options?.forceInsert && !description && !photoUrl) {
+        return null;
+      }
+
+      const { data, error } = await foodLogsTable
+        .insert({
+          user_id: user.id,
+          log_date: dateStr,
+          meal_type: mealType,
           description,
           photo_url: photoUrl,
           sort_order: item.sort_order,
         })
-        .eq('id', item.id);
+        .select('*')
+        .single();
 
       if (error) {
-        console.error('Save error:', error);
+        console.error('Create error:', error);
+        return null;
       }
 
-      return item.id;
+      updateLocalItem(mealType, tempId, {
+        id: data.id,
+        description: data.description ?? description,
+        photo_url: data.photo_url ?? photoUrl,
+        sort_order: data.sort_order ?? item.sort_order,
+      });
+
+      return data.id as string;
+    })();
+
+    saveLocksRef.current.set(tempId, task);
+    try {
+      return await task;
+    } finally {
+      if (saveLocksRef.current.get(tempId) === task) {
+        saveLocksRef.current.delete(tempId);
+      }
     }
-
-    if (!options?.forceInsert && !description && !photoUrl) {
-      return null;
-    }
-
-    const { data, error } = await foodLogsTable
-      .insert(payload)
-      .select('*')
-      .single();
-
-    if (error) {
-      console.error('Create error:', error);
-      return null;
-    }
-
-    updateLocalItem(mealType, tempId, {
-      id: data.id,
-      tempId: data.id,
-      description: data.description ?? description,
-      photo_url: data.photo_url ?? photoUrl,
-      sort_order: data.sort_order ?? item.sort_order,
-    });
-
-    return data.id as string;
   };
 
   const handleAddDish = (mealType: MealType) => {
