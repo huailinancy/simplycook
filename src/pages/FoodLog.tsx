@@ -287,6 +287,9 @@ export default function FoodLog() {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [entries, setEntries] = useState<Record<MealType, FoodLogItem[]>>(buildEmptyEntries);
+  const entriesRef = useRef(entries);
+  useEffect(() => { entriesRef.current = entries; }, [entries]);
+  const saveLocksRef = useRef<Map<string, Promise<string | null>>>(new Map());
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
