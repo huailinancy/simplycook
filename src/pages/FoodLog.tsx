@@ -492,7 +492,7 @@ export default function FoodLog() {
     setUploading(tempId);
 
     try {
-      let rowId = entries[mealType].find((item) => item.tempId === tempId)?.id;
+      let rowId = entriesRef.current[mealType].find((item) => item.tempId === tempId)?.id;
       if (!rowId) {
         rowId = await saveDish(mealType, tempId, { forceInsert: true });
       }
