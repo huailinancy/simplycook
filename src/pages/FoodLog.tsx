@@ -515,8 +515,8 @@ export default function FoodLog() {
         .getPublicUrl(filePath);
 
       const photoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-      updateLocalItem(mealType, tempId, { photo_url: photoUrl, id: rowId, tempId: rowId });
-      await saveDish(mealType, rowId, { photoUrl, forceInsert: true });
+      updateLocalItem(mealType, tempId, { photo_url: photoUrl, id: rowId });
+      await saveDish(mealType, tempId, { photoUrl, forceInsert: true });
 
       toast({ title: language === 'zh' ? '照片已上传' : 'Photo uploaded' });
     } catch (err: any) {
