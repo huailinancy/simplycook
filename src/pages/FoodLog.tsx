@@ -812,7 +812,7 @@ export default function FoodLog() {
         )}
 
         {/* Past 30 Days Review */}
-        <Past30DaysReview user={user} language={language} />
+        <AllRecordsReview user={user} language={language} />
 
       </main>
       <MobileBottomNav />
