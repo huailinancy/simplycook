@@ -591,6 +591,60 @@ export default function FoodLog() {
     entries[mealType].some((item) => item.description || item.photo_url)
   );
 
+  const handleExportCsv = async () => {
+    if (!user) return;
+    try {
+      const foodLogsTable = supabase.from('food_logs') as any;
+      const { data: rows, error } = await foodLogsTable
+        .select('log_date, meal_type, description, photo_url')
+        .eq('user_id', user.id)
+        .not('description', 'is', null)
+        .order('log_date', { ascending: true })
+        .order('meal_type', { ascending: true })
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+
+      const headers = language === 'zh'
+        ? ['日期', '餐次', '菜品', '图片链接']
+        : ['Date', 'Meal', 'Dish', 'Photo URL'];
+
+      const mealNames: Record<MealType, string> = {
+        breakfast: language === 'zh' ? '早餐' : 'Breakfast',
+        lunch: language === 'zh' ? '午餐' : 'Lunch',
+        dinner: language === 'zh' ? '晚餐' : 'Dinner',
+      };
+
+      const csvRows = (rows ?? []).map((row: any) => [
+        row.log_date,
+        mealNames[row.meal_type as MealType] || row.meal_type,
+        row.description || '',
+        row.photo_url || '',
+      ]);
+
+      const escape = (cell: string) => `"${String(cell).replace(/"/g, '""')}"`;
+      const csvContent = [headers, ...csvRows].map((row) => row.map(escape).join(',')).join('\n');
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `food_log_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: language === 'zh' ? '导出成功' : 'Export successful' });
+    } catch (err: any) {
+      console.error('Export error:', err);
+      toast({
+        title: language === 'zh' ? '导出失败' : 'Export failed',
+        description: err.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
