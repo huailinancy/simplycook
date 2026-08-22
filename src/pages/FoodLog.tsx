@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { format, addDays, subDays, subMonths as dateFnsSubMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isSameMonth, addMonths, subMonths, subDays as dateFnsSubDays } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Camera, Plus, X, UtensilsCrossed, Trash2, ChevronDown, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Camera, Plus, X, UtensilsCrossed, Trash2, ChevronDown, CalendarDays, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -591,6 +591,60 @@ export default function FoodLog() {
     entries[mealType].some((item) => item.description || item.photo_url)
   );
 
+  const handleExportCsv = async () => {
+    if (!user) return;
+    try {
+      const foodLogsTable = supabase.from('food_logs') as any;
+      const { data: rows, error } = await foodLogsTable
+        .select('log_date, meal_type, description, photo_url')
+        .eq('user_id', user.id)
+        .not('description', 'is', null)
+        .order('log_date', { ascending: true })
+        .order('meal_type', { ascending: true })
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+
+      const headers = language === 'zh'
+        ? ['日期', '餐次', '菜品', '图片链接']
+        : ['Date', 'Meal', 'Dish', 'Photo URL'];
+
+      const mealNames: Record<MealType, string> = {
+        breakfast: language === 'zh' ? '早餐' : 'Breakfast',
+        lunch: language === 'zh' ? '午餐' : 'Lunch',
+        dinner: language === 'zh' ? '晚餐' : 'Dinner',
+      };
+
+      const csvRows = (rows ?? []).map((row: any) => [
+        row.log_date,
+        mealNames[row.meal_type as MealType] || row.meal_type,
+        row.description || '',
+        row.photo_url || '',
+      ]);
+
+      const escape = (cell: string) => `"${String(cell).replace(/"/g, '""')}"`;
+      const csvContent = [headers, ...csvRows].map((row) => row.map(escape).join(',')).join('\n');
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `food_log_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: language === 'zh' ? '导出成功' : 'Export successful' });
+    } catch (err: any) {
+      console.error('Export error:', err);
+      toast({
+        title: language === 'zh' ? '导出失败' : 'Export failed',
+        description: err.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -616,13 +670,24 @@ export default function FoodLog() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1 container py-4 md:py-8 pb-20 md:pb-8">
-        <div className="mb-4 md:mb-6">
-          <h1 className="text-lg md:text-2xl font-bold">
-            {language === 'zh' ? '饮食记录' : 'Food Log'}
-          </h1>
-          <p className="text-xs md:text-sm text-muted-foreground">
-            {language === 'zh' ? '记录每天三餐的多道菜品与照片' : 'Track multiple dishes and photos for each meal'}
-          </p>
+        <div className="mb-4 md:mb-6 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg md:text-2xl font-bold">
+              {language === 'zh' ? '饮食记录' : 'Food Log'}
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              {language === 'zh' ? '记录每天三餐的多道菜品与照片' : 'Track multiple dishes and photos for each meal'}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 shrink-0"
+            onClick={handleExportCsv}
+          >
+            <Download className="h-3.5 w-3.5" />
+            {language === 'zh' ? '导出' : 'Export'}
+          </Button>
         </div>
 
         <div className="flex items-center justify-center gap-3 mb-2">
