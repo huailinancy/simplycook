@@ -670,13 +670,24 @@ export default function FoodLog() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1 container py-4 md:py-8 pb-20 md:pb-8">
-        <div className="mb-4 md:mb-6">
-          <h1 className="text-lg md:text-2xl font-bold">
-            {language === 'zh' ? '饮食记录' : 'Food Log'}
-          </h1>
-          <p className="text-xs md:text-sm text-muted-foreground">
-            {language === 'zh' ? '记录每天三餐的多道菜品与照片' : 'Track multiple dishes and photos for each meal'}
-          </p>
+        <div className="mb-4 md:mb-6 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg md:text-2xl font-bold">
+              {language === 'zh' ? '饮食记录' : 'Food Log'}
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              {language === 'zh' ? '记录每天三餐的多道菜品与照片' : 'Track multiple dishes and photos for each meal'}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 shrink-0"
+            onClick={handleExportCsv}
+          >
+            <Download className="h-3.5 w-3.5" />
+            {language === 'zh' ? '导出' : 'Export'}
+          </Button>
         </div>
 
         <div className="flex items-center justify-center gap-3 mb-2">
