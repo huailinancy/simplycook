@@ -844,7 +844,10 @@ export default function FoodLog() {
                               </div>
                             ) : null}
 
-                            <label className="cursor-pointer">
+                            <label
+                              className="cursor-pointer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <div className={cn(
                                 'flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 transition-colors hover:border-primary hover:bg-primary/5',
                                 uploading === item.tempId && 'opacity-50'
