@@ -814,6 +814,7 @@ export default function FoodLog() {
                           </div>
 
                           <Input
+                            onClick={(e) => e.stopPropagation()}
                             placeholder={language === 'zh' ? '输入菜名' : 'Enter dish name'}
                             value={item.description}
                             onChange={(e) => handleDescriptionChange(mealType, item.tempId, e.target.value)}
